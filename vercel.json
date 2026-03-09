@@ -1,31 +1,12 @@
 {
-    "version": 2,
-    "builds": [
+    "rewrites": [
         {
-            "src": "server/index.ts",
-            "use": "@vercel/node"
+            "source": "/api/(.*)",
+            "destination": "/api/index.ts"
         },
         {
-            "src": "package.json",
-            "use": "@vercel/static-build",
-            "config": {
-                "distDir": "dist/public"
-            }
-        }
-    ],
-    "routes": [
-        {
-            "src": "/api/(.*)",
-            "dest": "server/index.ts"
-        },
-        {
-            "src": "/(assets|images|attached_assets)/(.*)",
-            "dest": "/$1/$2"
-        },
-        {
-            "src": "/(.*)",
-            "dest": "client/index.html",
-            "check": true
+            "source": "/(.*)",
+            "destination": "/index.html"
         }
     ]
 }
