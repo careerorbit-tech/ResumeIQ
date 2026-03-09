@@ -18,7 +18,7 @@ export async function parsePdfToText(buffer: Buffer): Promise<string> {
         }
 
         // Handle the old pdf-parse API (v1.x) or potential variations
-        const parse = typeof pdfParse === 'function' ? pdfParse : pdfParse.default;
+        const parse = typeof pdfParse === 'function' ? pdfParse : (pdfParse as any).default;
         if (typeof parse === 'function') {
             const data = await parse(buffer);
             return data.text;

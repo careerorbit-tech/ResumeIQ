@@ -80,9 +80,26 @@ export default function Home() {
         body: formData,
       });
 
+      const contentType = res.headers.get("content-type");
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || "Analysis failed");
+        let errorMessage = "Analysis failed";
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await res.json();
+          errorMessage = errorData.error || errorMessage;
+        } else {
+          // It's likely an HTML error page (like a 404 or 500 from the provider)
+          const text = await res.text();
+          if (text.includes("<!DOCTYPE html>") || text.includes("<html")) {
+            errorMessage = `Server Error: Received an HTML response instead of JSON. This usually means the API route is not found (404) or there is a deployment configuration issue. Status: ${res.status}`;
+          } else {
+            errorMessage = `Server Error: ${res.status} ${res.statusText}`;
+          }
+        }
+        throw new Error(errorMessage);
+      }
+
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Invalid response from server: Expected JSON but received something else.");
       }
 
       const data = await res.json();
@@ -132,7 +149,26 @@ export default function Home() {
         body: JSON.stringify({ resumeText: resumeText }),
       });
 
-      if (!res.ok) throw new Error("Rewrite failed");
+      const contentType = res.headers.get("content-type");
+      if (!res.ok) {
+        let errorMessage = "Rewrite failed";
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await res.json();
+          errorMessage = errorData.error || errorMessage;
+        } else {
+          const text = await res.text();
+          if (text.includes("<!DOCTYPE html>") || text.includes("<html")) {
+            errorMessage = `Server Error: Received HTML instead of JSON. Check your deployment routing. Status: ${res.status}`;
+          } else {
+            errorMessage = `Server Error: ${res.status} ${res.statusText}`;
+          }
+        }
+        throw new Error(errorMessage);
+      }
+
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Invalid response from server: Expected JSON but received something else.");
+      }
 
       const data = await res.json();
       setRewrittenSections(data.sections);

@@ -10,6 +10,8 @@ import rateLimit from "express-rate-limit";
 const app = express();
 const httpServer = createServer(app);
 
+export { app, httpServer };
+
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;
@@ -129,14 +131,16 @@ app.use((req, res, next) => {
     await setupVite(httpServer, app);
   }
 
-  const port = parseInt(process.env.PORT || "5003", 10);
-  httpServer.listen(
-    {
-      port,
-      host: "0.0.0.0",
-    },
-    () => {
-      log(`serving on port ${port}`);
-    }
-  );
+  if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
+    const port = parseInt(process.env.PORT || "5003", 10);
+    httpServer.listen(
+      {
+        port,
+        host: "0.0.0.0",
+      },
+      () => {
+        log(`serving on port ${port}`);
+      }
+    );
+  }
 })();

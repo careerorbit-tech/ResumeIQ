@@ -10,8 +10,8 @@ const MODEL = "llama-3.3-70b-versatile";
 
 export async function analyzeResume(resumeText: string) {
     console.log(`[Groq] Using model: ${MODEL} for analyzeResume`);
-    if (!groq) {
-        throw new Error("Groq API key is not configured. Please add GROQ_API_KEY to your .env file.");
+    if (!groq || process.env.GROQ_API_KEY === "your_api_key_here") {
+        throw new Error("Groq API key is not configured or is still set to its placeholder. Please check your environment variables.");
     }
 
     const prompt = `
@@ -68,8 +68,8 @@ ${resumeText}
 }
 
 export async function matchJobDescription(resumeText: string, jobDescription: string) {
-    if (!groq) {
-        throw new Error("Groq API key is not configured. Please add GROQ_API_KEY to your .env file.");
+    if (!groq || process.env.GROQ_API_KEY === "your_api_key_here") {
+        throw new Error("Groq API key is not configured or is still set to its placeholder. Please check your environment variables.");
     }
 
     const prompt = `
@@ -120,8 +120,8 @@ ${resumeText}
 
 export async function rewriteResumeSection(resumeText: string, instruction: string) {
     console.log(`[Groq] Using model: ${MODEL} for rewriteResumeSection`);
-    if (!groq) {
-        throw new Error("Groq API key is not configured. Please add GROQ_API_KEY to your .env file.");
+    if (!groq || process.env.GROQ_API_KEY === "your_api_key_here") {
+        throw new Error("Groq API key is not configured or is still set to its placeholder. Please check your environment variables.");
     }
 
     const prompt = `
