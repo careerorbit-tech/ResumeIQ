@@ -88,6 +88,13 @@ async function performSetup() {
   }
 }
 
+// Vercel Serverless Function Config (disables body parsing so multer works)
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
 // Vercel Serverless Function Handler
 export default async function handler(req: any, res: any) {
   // Allow /api/ping to bypass setup to confirm the function is alive
@@ -111,7 +118,16 @@ export default async function handler(req: any, res: any) {
     }
 
     // Hand off to the express app body
-    return app(req, res);
+    // We return a Promise that resolves when Express finishes writing to the response
+    return new Promise((resolve, reject) => {
+      // Monkey-patch res.end to auto-resolve the handler
+      const originalEnd = res.end;
+      res.end = function (...args: any[]) {
+        resolve(undefined);
+        return originalEnd.apply(this, args);
+      };
+      app(req, res);
+    });
   } catch (error: any) {
     console.error("Vercel Handler Crash:", error);
     res.status(500).json({
