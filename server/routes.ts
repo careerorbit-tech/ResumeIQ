@@ -4,7 +4,7 @@ import multer from "multer";
 import { parsePdfToText } from "./lib/parser";
 import { analyzeResume, matchJobDescription, rewriteResumeSection } from "./lib/groq";
 import { storage } from "./storage";
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
 
 const ALLOWED_MIME_TYPES = [
   "application/pdf",

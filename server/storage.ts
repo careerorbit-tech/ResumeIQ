@@ -1,5 +1,5 @@
 import { type User, type InsertUser } from "../shared/schema";
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

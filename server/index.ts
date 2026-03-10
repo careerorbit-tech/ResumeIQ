@@ -2,10 +2,8 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-// @ts-ignore
 import helmet from "helmet";
-// @ts-ignore
-import rateLimit from "express-rate-limit";
+import { rateLimit } from "express-rate-limit";
 
 const app = express();
 const httpServer = createServer(app);
