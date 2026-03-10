@@ -107,6 +107,7 @@ export default async function handler(req: any, res: any) {
       return res.status(500).json({
         error: "Server failed to initialize.",
         details: setupError.message,
+        stack: setupError.stack,
         code: "SETUP_FAILED"
       });
     }
@@ -118,6 +119,7 @@ export default async function handler(req: any, res: any) {
     res.status(500).json({
       error: "A critical server error occurred during request handling.",
       details: error.message,
+      stack: error.stack,
       code: "HANDLER_ERROR"
     });
   }
