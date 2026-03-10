@@ -1,4 +1,3 @@
-import "dotenv/config";
 import Groq from "groq-sdk";
 
 // Initialize Groq client safely
