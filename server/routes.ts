@@ -4,6 +4,7 @@ import multer from "multer";
 import { parsePdfToText } from "./lib/parser";
 import { analyzeResume, matchJobDescription, rewriteResumeSection } from "./lib/groq";
 import { storage } from "./storage";
+import { randomUUID } from "crypto";
 
 const ALLOWED_MIME_TYPES = [
   "application/pdf",
@@ -93,7 +94,7 @@ export async function registerRoutes(
 
       // Save to in-memory history
       await storage.saveAnalysis({
-        id: crypto.randomUUID(),
+        id: randomUUID(),
         timestamp: result.timestamp,
         fileName: result.fileName,
         score: resumeAnalysis.score as number,

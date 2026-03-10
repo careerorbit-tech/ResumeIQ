@@ -54,8 +54,17 @@ const setupPromise = (async () => {
 
 // Vercel Serverless Function Handler
 export default async function handler(req: any, res: any) {
-  if (!isSetup) {
-    await setupPromise;
+  try {
+    if (!isSetup) {
+      await setupPromise;
+    }
+    return app(req, res);
+  } catch (error: any) {
+    console.error("Vercel Handler Error:", error);
+    res.status(500).json({
+      error: "A server error occurred during initialization.",
+      details: error.message,
+      code: "INITIALIZATION_ERROR"
+    });
   }
-  return app(req, res);
 }

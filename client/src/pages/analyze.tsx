@@ -180,9 +180,17 @@ export default function Analyze() {
             }
 
             const res = await fetch("/api/analyze", { method: "POST", body: formData });
+
             if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.error || "Analysis failed");
+                const contentType = res.headers.get("content-type");
+                if (contentType && contentType.includes("application/json")) {
+                    const err = await res.json();
+                    throw new Error(err.error || "Analysis failed");
+                } else {
+                    const text = await res.text();
+                    console.error("Non-JSON error response:", text);
+                    throw new Error("The server returned an unexpected response. This might be a deployment issue.");
+                }
             }
 
             const data = await res.json();
