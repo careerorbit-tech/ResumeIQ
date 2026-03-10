@@ -189,7 +189,8 @@ export default function Analyze() {
                 } else {
                     const text = await res.text();
                     console.error("Non-JSON error response:", text);
-                    throw new Error("The server returned an unexpected response. This might be a deployment issue.");
+                    const snippet = text.slice(0, 150).replace(/<[^>]*>?/gm, ''); // Strip HTML tags for the toast
+                    throw new Error(`Server returned non-JSON response: ${snippet}...`);
                 }
             }
 

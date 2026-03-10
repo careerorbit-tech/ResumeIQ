@@ -41,15 +41,20 @@ app.use((req, res, next) => {
 // Sync setup placeholder
 let isSetup = false;
 const setupPromise = (async () => {
-  await registerRoutes(httpServer, app);
+  try {
+    await registerRoutes(httpServer, app);
 
-  // Final error handler
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    res.status(status).json({ error: err.message || "Internal Server Error" });
-  });
+    // Final error handler
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      const status = err.status || err.statusCode || 500;
+      res.status(status).json({ error: err.message || "Internal Server Error" });
+    });
 
-  isSetup = true;
+    isSetup = true;
+  } catch (err) {
+    console.error("Setup error in Vercel function:", err);
+    throw err;
+  }
 })();
 
 // Vercel Serverless Function Handler
