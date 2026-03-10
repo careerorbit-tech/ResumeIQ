@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
+import { registerRoutes } from "../server/routes";
 
 const app = express();
 const httpServer = createServer(app);
@@ -59,9 +60,6 @@ async function performSetup() {
       legacyHeaders: false,
     });
     app.use("/api", limiter);
-
-    console.log("Dynamically importing routes...");
-    const { registerRoutes } = await import("../server/routes");
 
     console.log("Initializing server routes...");
     await registerRoutes(httpServer, app);
