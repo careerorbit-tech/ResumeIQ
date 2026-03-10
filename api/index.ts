@@ -30,23 +30,29 @@ app.use("/api", limiter);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: false, limit: "10mb" }));
 
-// Request logging
-app.use((req, res, next) => {
+// Request logging middleware
+const requestLogger = (req: Request, res: Response, next: NextFunction) => {
   if (req.path.startsWith("/api")) {
-    console.log(`${req.method} ${req.path}`);
+    console.log(`${new Date().toISOString()} [API] ${req.method} ${req.path}`);
   }
   next();
-});
+};
 
-// Sync setup placeholder
+app.use(requestLogger);
+
+// Sync setup state
 let isSetup = false;
 let setupError: any = null;
-const setupPromise = (async () => {
+
+async function performSetup() {
+  if (isSetup) return;
   try {
+    console.log("Initializing server routes...");
     await registerRoutes(httpServer, app);
 
-    // Final error handler
+    // Final global error handler for the app
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      console.error("Express App Error:", err);
       const status = err.status || err.statusCode || 500;
       res.status(status).json({
         error: err.message || "Internal Server Error",
@@ -55,41 +61,36 @@ const setupPromise = (async () => {
     });
 
     isSetup = true;
-  } catch (err) {
-    console.error("Setup error in Vercel function:", err);
+    console.log("Server initialization successful.");
+  } catch (err: any) {
+    console.error("CRITICAL: Server initialization failed:", err);
     setupError = err;
-    isSetup = false;
+    throw err;
   }
-})();
+}
 
 // Vercel Serverless Function Handler
 export default async function handler(req: any, res: any) {
-  if (setupError) {
-    return res.status(500).json({
-      error: "Server failed to initialize.",
-      details: setupError.message,
-      code: "SETUP_FAILED"
-    });
-  }
-
   try {
     if (!isSetup) {
-      await setupPromise;
+      await performSetup();
     }
 
+    // Check if a previous setup attempt failed
     if (setupError) {
       return res.status(500).json({
-        error: "Server setup failed.",
+        error: "Server failed to initialize.",
         details: setupError.message,
         code: "SETUP_FAILED"
       });
     }
 
+    // Hand off to the express app body
     return app(req, res);
   } catch (error: any) {
-    console.error("Vercel Handler Error:", error);
+    console.error("Vercel Handler Crash:", error);
     res.status(500).json({
-      error: "A server error occurred during request handling.",
+      error: "A critical server error occurred during request handling.",
       details: error.message,
       code: "HANDLER_ERROR"
     });
