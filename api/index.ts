@@ -95,6 +95,9 @@ export const config = {
   },
 };
 
+// Set maximum duration for Vercel Serverless Function to prevent timeouts during Groq API calls
+export const maxDuration = 60;
+
 // Vercel Serverless Function Handler
 export default async function handler(req: any, res: any) {
   // Allow /api/ping to bypass setup to confirm the function is alive
