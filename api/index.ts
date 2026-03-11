@@ -2,7 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
-import { registerRoutes } from "../server/routes";
+import { registerRoutes } from "../server/routes.js";
 
 const app = express();
 const httpServer = createServer(app);

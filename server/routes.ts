@@ -1,9 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import multer from "multer";
-import { parsePdfToText } from "./lib/parser";
-import { analyzeResume, matchJobDescription, rewriteResumeSection } from "./lib/groq";
-import { storage } from "./storage";
+import { parsePdfToText } from "./lib/parser.js";
+import { analyzeResume, matchJobDescription, rewriteResumeSection } from "./lib/groq.js";
+import { storage } from "./storage.js";
 import { randomUUID } from "node:crypto";
 
 const ALLOWED_MIME_TYPES = [
