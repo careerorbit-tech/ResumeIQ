@@ -1,18 +1,26 @@
 import Groq from "groq-sdk";
 
-// Initialize Groq client safely
-const groq = process.env.GROQ_API_KEY
-    ? new Groq({ apiKey: process.env.GROQ_API_KEY })
-    : null;
-
 const MODEL = "llama-3.3-70b-versatile";
+
+/**
+ * Returns a fresh Groq client, validating the API key at call time.
+ * This lazy approach avoids module-load failures on Vercel cold starts
+ * where env vars may not be available during import.
+ */
+function getGroqClient(): Groq {
+    console.log("API KEY EXISTS:", !!process.env.GROQ_API_KEY);
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey || apiKey === "your_api_key_here" || apiKey === "your_real_groq_api_key_here") {
+        throw new Error(
+            "Groq API key is not configured or is invalid. Please set GROQ_API_KEY in your environment variables."
+        );
+    }
+    return new Groq({ apiKey });
+}
 
 export async function analyzeResume(resumeText: string) {
     console.log(`[Groq] Using model: ${MODEL} for analyzeResume`);
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!groq || !apiKey || apiKey === "your_api_key_here") {
-        throw new Error("Groq API key is not configured or is invalid. Please check your GROQ_API_KEY environment variable.");
-    }
+    const groq = getGroqClient();
 
     const prompt = `
 You are an expert AI Career Coach and ATS optimizer.
@@ -68,10 +76,8 @@ ${resumeText}
 }
 
 export async function matchJobDescription(resumeText: string, jobDescription: string) {
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!groq || !apiKey || apiKey === "your_api_key_here") {
-        throw new Error("Groq API key is not configured or is invalid. Please check your GROQ_API_KEY environment variable.");
-    }
+    console.log(`[Groq] Using model: ${MODEL} for matchJobDescription`);
+    const groq = getGroqClient();
 
     const prompt = `
 You are an expert technical recruiter and AI matching system.
@@ -121,10 +127,7 @@ ${resumeText}
 
 export async function rewriteResumeSection(resumeText: string, instruction: string) {
     console.log(`[Groq] Using model: ${MODEL} for rewriteResumeSection`);
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!groq || !apiKey || apiKey === "your_api_key_here") {
-        throw new Error("Groq API key is not configured or is invalid. Please check your GROQ_API_KEY environment variable.");
-    }
+    const groq = getGroqClient();
 
     const prompt = `
 You are an expert career coach and professional resume writer.

@@ -22,10 +22,6 @@ app.get("/api/ping", (_req, res) => {
   });
 });
 
-app.set("trust proxy", 1);
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: false, limit: "10mb" }));
-
 // Request logging middleware
 const requestLogger = (req: Request, res: Response, next: NextFunction) => {
   if (req.path.startsWith("/api")) {
@@ -100,6 +96,9 @@ export const maxDuration = 60;
 
 // Vercel Serverless Function Handler
 export default async function handler(req: any, res: any) {
+  // Log API key presence on every invocation for Vercel debugging
+  console.log("[Handler] API KEY EXISTS:", !!process.env.GROQ_API_KEY);
+
   // Allow /api/ping to bypass setup to confirm the function is alive
   if (req.url === "/api/ping") {
     return app(req, res);
