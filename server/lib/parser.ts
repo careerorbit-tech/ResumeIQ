@@ -9,12 +9,12 @@ import pdf from "pdf-parse";
  */
 export async function parsePdfToText(buffer: Buffer): Promise<string> {
     try {
-        console.log("[Parser] Starting PDF parsing with pdf-parse...");
+        console.log(`[Parser] Starting PDF parsing with pdf-parse (${(buffer.length / 1024).toFixed(1)} KB)...`);
 
         // pdf-parse@1.1.1 is straightforward and doesn't require worker configuration
         const data = await pdf(buffer);
 
-        console.log(`[Parser] Extracted ${data.text?.length || 0} characters from PDF`);
+        console.log(`[Parser] Extracted ${data.text?.length || 0} characters from PDF (Parsing finished)`);
         return data.text || "";
     } catch (error: any) {
         console.error("PDF Parsing error:", error);

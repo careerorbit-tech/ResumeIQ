@@ -44,13 +44,16 @@ export async function registerRoutes(
   // ── Analyze Resume ────────────────────────────────────────────────────────
   app.post("/api/analyze", upload.single("resume"), async (req, res) => {
     try {
+      console.time("analysis-total");
       const file = (req as any).file as Express.Multer.File | undefined;
       let resumeText = (req.body.resumeText as string) || "";
 
       if (file) {
         const mime = file.mimetype;
         if (mime === "application/pdf") {
+          console.time("pdf-parse");
           resumeText = await parsePdfToText(file.buffer);
+          console.timeEnd("pdf-parse");
         } else {
           resumeText = file.buffer.toString("utf-8");
         }
@@ -72,17 +75,19 @@ export async function registerRoutes(
 
       const jobDescription = (req.body.jobDescription as string) || "";
 
-      const [resumeAnalysis, matchAnalysis] = await Promise.all([
+      console.time("ai-parallel");
+      // Use a consistent default instruction for the initial rewrite to allow parallelization
+      // This saves a sequential AI call and helps avoid the 10s Vercel timeout
+      const defaultRewriteInstruction = "Improve the overall quality, impact, and ATS compatibility of this resume. Make bullet points stronger with quantifiable achievements where possible.";
+
+      const [resumeAnalysis, matchAnalysis, rewriteResult] = await Promise.all([
         analyzeResume(resumeText),
         jobDescription.trim()
           ? matchJobDescription(resumeText, jobDescription)
           : Promise.resolve(null),
+        rewriteResumeSection(resumeText, defaultRewriteInstruction)
       ]);
-
-      // Automatically generate a rewrite during the main analysis request
-      const rewriteInstruction = resumeAnalysis.actionPlan?.join("; ") ||
-        "Improve overall quality and ATS compatibility.";
-      const rewriteResult = await rewriteResumeSection(resumeText, rewriteInstruction);
+      console.timeEnd("ai-parallel");
 
       const result = {
         resumeReport: resumeAnalysis,
@@ -105,6 +110,7 @@ export async function registerRoutes(
       });
 
       res.json(result);
+      console.timeEnd("analysis-total");
     } catch (error: any) {
       console.error("Analysis Error:", error);
       if (error.message?.includes("API key")) {
