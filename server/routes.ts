@@ -11,7 +11,7 @@ const ALLOWED_MIME_TYPES = [
   "text/plain",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB (Vercel limit is 4.5MB)
 
 const upload = multer({
   storage: multer.memoryStorage(),

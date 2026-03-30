@@ -7,136 +7,128 @@ import { registerRoutes } from "../server/routes.js";
 const app = express();
 const httpServer = createServer(app);
 
-app.set("trust proxy", 1);
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: false, limit: "10mb" }));
-
-// ── Diagnostic Routes ────────────────────────────────────────────────────────
-// This route runs even if the rest of the app fails to initialize
-app.get("/api/ping", (_req, res) => {
-  res.json({
-    pong: true,
-    time: new Date().toISOString(),
-    env: process.env.NODE_ENV,
-    hasApiKey: !!process.env.GROQ_API_KEY
-  });
-});
-
-// Request logging middleware
-const requestLogger = (req: Request, res: Response, next: NextFunction) => {
-  if (req.path.startsWith("/api")) {
-    console.log(`${new Date().toISOString()} [API] ${req.method} ${req.path}`);
-  }
-  next();
-};
-
-app.use(requestLogger);
-
-// Sync setup state
+// Initialization state
 let isSetup = false;
 let setupError: any = null;
+let setupPromise: Promise<void> | null = null;
 
 async function performSetup() {
   if (isSetup) return;
-  try {
-    // Security headers (moved inside setup to avoid top-level crash)
-    app.use(
-      helmet({
-        contentSecurityPolicy: false,
-        crossOriginEmbedderPolicy: false,
-      })
-    );
+  if (setupPromise) return setupPromise;
 
-    // Rate limiting (moved inside setup)
-    const limiter = rateLimit({
-      windowMs: 60 * 1000,
-      max: 60,
-      message: { error: "Too many requests, please try again in a minute." },
-      standardHeaders: true,
-      legacyHeaders: false,
-    });
-    app.use("/api", limiter);
+  setupPromise = (async () => {
+    try {
+      console.log("[Setup] Starting server initialization...");
 
-    console.log("Initializing server routes...");
-    await registerRoutes(httpServer, app);
+      app.set("trust proxy", 1);
+      app.use(express.json({ limit: "10mb" }));
+      app.use(express.urlencoded({ extended: false, limit: "10mb" }));
 
-    // Final global error handler for the app
-    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-      console.error("Express App Error:", err);
-      const status = err.status || err.statusCode || 500;
-      res.status(status).json({
-        error: err.message || "Internal Server Error",
-        code: "SERVER_ERROR",
-        details: process.env.NODE_ENV === "development" ? err.stack : undefined
+      // Security headers
+      app.use(
+        helmet({
+          contentSecurityPolicy: false,
+          crossOriginEmbedderPolicy: false,
+        })
+      );
+
+      // Rate limiting
+      const limiter = rateLimit({
+        windowMs: 60 * 1000,
+        max: 60,
+        message: { error: "Too many requests, please try again in a minute." },
+        standardHeaders: true,
+        legacyHeaders: false,
       });
-    });
+      app.use("/api", limiter);
 
-    isSetup = true;
-    console.log("Server initialization successful.");
-  } catch (err: any) {
-    console.error("CRITICAL: Server initialization failed:", err);
-    setupError = {
-      message: err.message,
-      stack: err.stack,
-      name: err.name
-    };
-    throw err;
-  }
+      console.log("[Setup] Registering routes...");
+      await registerRoutes(httpServer, app);
+
+      // Final global error handler for the app
+      app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+        console.error("[App Error]", err);
+        const status = err.status || err.statusCode || 500;
+        if (!res.headersSent) {
+          res.status(status).json({
+            error: err.message || "Internal Server Error",
+            code: "SERVER_ERROR",
+            details: process.env.NODE_ENV === "development" ? err.stack : undefined
+          });
+        }
+      });
+
+      isSetup = true;
+      console.log("[Setup] Server initialization successful.");
+    } catch (err: any) {
+      console.error("[Setup] CRITICAL: Server initialization failed:", err);
+      setupError = {
+        message: err.message,
+        stack: err.stack,
+        name: err.name
+      };
+      isSetup = false;
+      setupPromise = null; // Allow retry on next request
+      throw err;
+    }
+  })();
+
+  return setupPromise;
 }
 
-// Vercel Serverless Function Config (disables body parsing so multer works)
+// Vercel Serverless Function Config
 export const config = {
   api: {
     bodyParser: false,
   },
 };
 
-// Set maximum duration for Vercel Serverless Function to prevent timeouts during Groq API calls
-export const maxDuration = 60;
-
 // Vercel Serverless Function Handler
 export default async function handler(req: any, res: any) {
-  // Log API key presence on every invocation for Vercel debugging
-  console.log("[Handler] API KEY EXISTS:", !!process.env.GROQ_API_KEY);
-
-  // Allow /api/ping to bypass setup to confirm the function is alive
-  if (req.url === "/api/ping") {
-    return app(req, res);
-  }
+  const startTime = Date.now();
+  console.log(`[Handler] ${req.method} ${req.url} - API KEY EXISTS: ${!!process.env.GROQ_API_KEY}`);
 
   try {
-    if (!isSetup && !setupError) {
-      await performSetup();
-    }
+    // Ensure setup is complete
+    await performSetup();
 
-    // Check if recovery is possible or return the cached error
+    // Check if initialization failed
     if (setupError) {
+      console.error("[Handler] Setup error cached:", setupError.message);
       return res.status(500).json({
         error: "Server failed to initialize.",
         details: setupError.message,
-        stack: setupError.stack,
         code: "SETUP_FAILED"
       });
     }
 
-    // Hand off to the express app body
-    // We return a Promise that resolves when Express finishes writing to the response
-    return new Promise((resolve, reject) => {
-      // Monkey-patch res.end to auto-resolve the handler
-      const originalEnd = res.end;
-      res.end = function (...args: any[]) {
+    // Hand off to the express app
+    // We return a Promise that resolves when the response is finished
+    return new Promise((resolve) => {
+      const cleanup = () => {
+        const duration = Date.now() - startTime;
+        console.log(`[Handler] Request finished in ${duration}ms`);
         resolve(undefined);
-        return originalEnd.apply(this, args);
       };
+
+      res.on('finish', cleanup);
+      res.on('close', cleanup);
+      res.on('error', (err: any) => {
+        console.error("[Handler] Response error:", err);
+        cleanup();
+      });
+
+      // Pass the request to the Express app
       app(req, res);
     });
   } catch (error: any) {
-    console.error("Vercel Handler Crash:", error);
-    res.status(500).json({
-      error: "A critical server error occurred during request handling.",
-      details: error.message,
-      stack: error.stack,
-      code: "HANDLER_ERROR"
-    });
+    console.error("[Handler] Fatal Crash:", error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: "A critical server error occurred.",
+        details: error.message,
+        code: "HANDLER_ERROR"
+      });
+    }
   }
 }
