@@ -1,35 +1,54 @@
-import * as pdfParse from "pdf-parse";
-
-// Polyfill for DOMMatrix which is required by some PDF libraries in Node.js environments
-if (typeof global !== "undefined" && typeof (global as any).DOMMatrix === "undefined") {
-    console.log("Applying DOMMatrix polyfill for PDF parsing...");
-    (global as any).DOMMatrix = class DOMMatrix {
-        a = 1; b = 0; c = 0; d = 1; e = 0; f = 0;
-        constructor() { }
-        static fromFloat32Array() { return new DOMMatrix(); }
-        static fromFloat64Array() { return new DOMMatrix(); }
-    };
-}
-
+/**
+ * PDF text extraction using pdfjs-dist directly.
+ *
+ * WHY: pdf-parse v2 depends on @napi-rs/canvas (a native C++ addon that
+ * requires libcairo/libpango system libraries). These are NOT available in
+ * Vercel's serverless Lambda environment, causing FUNCTION_INVOCATION_FAILED
+ * on every cold start.
+ *
+ * pdfjs-dist is pure JavaScript — no native addons, works everywhere.
+ * The dynamic import ensures the module is never loaded at module-init time,
+ * which protects the serverless cold start even further.
+ */
 export async function parsePdfToText(buffer: Buffer): Promise<string> {
     try {
-        // Handle the new pdf-parse API (v2.x)
-        if (pdfParse.PDFParse) {
-            const parser = new pdfParse.PDFParse({ data: buffer });
-            const result = await parser.getText();
-            return result.text;
+        // Dynamic import — defers module loading to call time, not cold-start time.
+        // We use the "legacy" build which runs fully in the main thread
+        // (no Web Worker required — safe for serverless environments).
+        const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+
+        // Belt-and-suspenders: disable any worker fallback attempt.
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "";
+
+        const data = new Uint8Array(buffer);
+        const loadingTask = pdfjsLib.getDocument({
+            data,
+            useWorkerFetch: false,   // no fetch API in Node.js
+            isEvalSupported: false,  // safer in restricted environments
+            useSystemFonts: true,    // avoid font loading in serverless
+        });
+
+        const pdfDoc = await loadingTask.promise;
+        console.log(`[Parser] Parsing PDF with ${pdfDoc.numPages} page(s)`);
+
+        const pageTexts: string[] = [];
+        for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+            const page = await pdfDoc.getPage(pageNum);
+            const content = await page.getTextContent();
+            const pageText = content.items
+                .map((item: any) => ("str" in item ? item.str : ""))
+                .join(" ");
+            if (pageText.trim()) {
+                pageTexts.push(pageText.trim());
+            }
         }
 
-        // Handle the old pdf-parse API (v1.x) or potential variations
-        const parse = typeof pdfParse === 'function' ? pdfParse : (pdfParse as any).default;
-        if (typeof parse === 'function') {
-            const data = await parse(buffer);
-            return data.text;
-        }
-
-        throw new Error("Could not find a valid PDF parsing function in pdf-parse");
+        await pdfDoc.destroy();
+        const result = pageTexts.join("\n\n");
+        console.log(`[Parser] Extracted ${result.length} characters from PDF`);
+        return result;
     } catch (error: any) {
         console.error("PDF Parsing error:", error);
-        throw new Error("Failed to parse PDF document.");
+        throw new Error("Failed to parse PDF document: " + error.message);
     }
 }
