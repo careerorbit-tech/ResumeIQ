@@ -1,17 +1,21 @@
 import type { Express } from "express";
-import { createServer, type Server } from "http";
+import { type Server } from "http";
 import multer from "multer";
 import { parsePdfToText } from "./lib/parser.js";
-import { analyzeResume, matchJobDescription, rewriteResumeSection } from "./lib/groq.js";
-import { storage } from "./storage.js";
-import { randomUUID } from "node:crypto";
+import {
+  analyzeResume,
+  matchJobDescription,
+  rewriteResumeSection,
+} from "./lib/groq.js";
 
 const ALLOWED_MIME_TYPES = [
   "application/pdf",
   "text/plain",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
-const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB (Vercel limit is 4.5MB)
+
+// Vercel's request body limit is 4.5MB; keep headroom for multipart overhead
+const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4 MB
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -20,7 +24,11 @@ const upload = multer({
     if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error("Only PDF, DOCX, and TXT files are allowed."));
+      cb(
+        new Error(
+          `Unsupported file type: ${file.mimetype}. Only PDF, DOCX, and TXT files are allowed.`
+        )
+      );
     }
   },
 });
@@ -29,9 +37,9 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  console.log("[Routes] Starting route registration...");
+  console.log("[Routes] Registering routes...");
 
-  // ── Health Check ──────────────────────────────────────────────────────────
+  // ── Health Check ────────────────────────────────────────────────────────────
   app.get("/api/health", (_req, res) => {
     res.json({
       status: "ok",
@@ -41,93 +49,120 @@ export async function registerRoutes(
     });
   });
 
-  // ── Analyze Resume ────────────────────────────────────────────────────────
+  // ── Analyze Resume ──────────────────────────────────────────────────────────
   app.post("/api/analyze", upload.single("resume"), async (req, res) => {
     try {
-      console.time("analysis-total");
-      const file = (req as any).file as Express.Multer.File | undefined;
+      // Validate GROQ_API_KEY early — return clean JSON, never crash
+      if (!process.env.GROQ_API_KEY) {
+        return res.status(503).json({
+          success: false,
+          message:
+            "AI service is not configured. Please contact the site administrator.",
+          code: "API_KEY_MISSING",
+        });
+      }
+
+      const file = (req as Express.Request & { file?: Express.Multer.File })
+        .file;
       let resumeText = (req.body.resumeText as string) || "";
 
+      // Extract text from uploaded file
       if (file) {
-        const mime = file.mimetype;
-        if (mime === "application/pdf") {
-          console.time("pdf-parse");
-          resumeText = await parsePdfToText(file.buffer);
-          console.timeEnd("pdf-parse");
+        if (file.mimetype === "application/pdf") {
+          console.time("[Routes] pdf-parse");
+          try {
+            resumeText = await parsePdfToText(file.buffer);
+          } catch (parseError: unknown) {
+            const msg =
+              parseError instanceof Error
+                ? parseError.message
+                : "Failed to parse the uploaded PDF.";
+            return res.status(422).json({
+              success: false,
+              message: msg,
+              code: "PDF_PARSE_ERROR",
+            });
+          }
+          console.timeEnd("[Routes] pdf-parse");
         } else {
+          // DOCX / TXT — read as UTF-8
           resumeText = file.buffer.toString("utf-8");
         }
       }
 
-      if (!resumeText.trim()) {
+      // Validate resume content
+      const trimmed = resumeText.trim();
+      if (!trimmed) {
         return res.status(400).json({
-          error: "No resume content provided. Please upload a file or paste resume text.",
+          success: false,
+          message:
+            "No resume content found. Please upload a file or paste your resume text.",
           code: "MISSING_RESUME",
         });
       }
 
-      if (resumeText.trim().length < 50) {
+      if (trimmed.length < 50) {
         return res.status(400).json({
-          error: "Resume content is too short. Please provide a more complete resume.",
+          success: false,
+          message:
+            "The resume content is too short. Please provide a more complete resume (at least 50 characters).",
           code: "RESUME_TOO_SHORT",
         });
       }
 
       const jobDescription = (req.body.jobDescription as string) || "";
 
-      console.time("ai-parallel");
-      // Use a consistent default instruction for the initial rewrite to allow parallelization
-      // This saves a sequential AI call and helps avoid the 10s Vercel timeout
-      const defaultRewriteInstruction = "Improve the overall quality, impact, and ATS compatibility of this resume. Make bullet points stronger with quantifiable achievements where possible.";
+      // Run all AI tasks in parallel for speed
+      const defaultInstruction =
+        "Improve the overall quality, impact, and ATS compatibility of this resume. Make bullet points stronger with quantifiable achievements where possible.";
 
+      console.time("[Routes] ai-parallel");
       const [resumeAnalysis, matchAnalysis, rewriteResult] = await Promise.all([
-        analyzeResume(resumeText),
+        analyzeResume(trimmed),
         jobDescription.trim()
-          ? matchJobDescription(resumeText, jobDescription)
+          ? matchJobDescription(trimmed, jobDescription)
           : Promise.resolve(null),
-        rewriteResumeSection(resumeText, defaultRewriteInstruction)
+        rewriteResumeSection(trimmed, defaultInstruction),
       ]);
-      console.timeEnd("ai-parallel");
+      console.timeEnd("[Routes] ai-parallel");
 
-      const result = {
+      return res.json({
+        success: true,
         resumeReport: resumeAnalysis,
         matchReport: matchAnalysis,
-        rewriteResult: rewriteResult, // Include rewrite in the main response
+        rewriteResult,
         timestamp: new Date().toISOString(),
         fileName: file?.originalname ?? null,
-        resumeText: resumeText,
-      };
-
-      // Save to in-memory history
-      await storage.saveAnalysis({
-        id: randomUUID(),
-        timestamp: result.timestamp,
-        fileName: result.fileName,
-        score: resumeAnalysis.score as number,
-        matchScore: (matchAnalysis as any)?.matchScore ?? null,
-        resumeReport: resumeAnalysis,
-        matchReport: matchAnalysis,
+        resumeText: trimmed,
       });
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred during analysis.";
 
-      res.json(result);
-      console.timeEnd("analysis-total");
-    } catch (error: any) {
-      console.error("Analysis Error:", error);
-      if (error.message?.includes("API key")) {
-        return res
-          .status(503)
-          .json({ error: error.message, code: "API_KEY_ERROR" });
-      }
-      res.status(500).json({
-        error: error.message || "An error occurred during analysis",
+      console.error("[Routes] Analysis error:", message);
+
+      // Never return HTML errors
+      return res.status(500).json({
+        success: false,
+        message,
         code: "ANALYSIS_ERROR",
       });
     }
   });
 
-  // ── Auto-Rewrite with AI ──────────────────────────────────────────────────
+  // ── Auto-Rewrite ────────────────────────────────────────────────────────────
   app.post("/api/rewrite", async (req, res) => {
     try {
+      if (!process.env.GROQ_API_KEY) {
+        return res.status(503).json({
+          success: false,
+          message: "AI service is not configured.",
+          code: "API_KEY_MISSING",
+        });
+      }
+
       const { resumeText, instruction } = req.body as {
         resumeText?: string;
         instruction?: string;
@@ -135,7 +170,8 @@ export async function registerRoutes(
 
       if (!resumeText?.trim()) {
         return res.status(400).json({
-          error: "Resume text is required.",
+          success: false,
+          message: "Resume text is required for rewriting.",
           code: "MISSING_RESUME",
         });
       }
@@ -145,40 +181,32 @@ export async function registerRoutes(
         "Improve the overall quality, impact, and ATS compatibility of this resume. Make bullet points stronger with quantifiable achievements where possible.";
 
       const result = await rewriteResumeSection(resumeText, defaultInstruction);
-      res.json(result);
-    } catch (error: any) {
-      console.error("Rewrite Error:", error);
-      res.status(500).json({
-        error: error.message || "Failed to rewrite resume.",
+      return res.json({ success: true, ...result });
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to rewrite resume.";
+      console.error("[Routes] Rewrite error:", message);
+      return res.status(500).json({
+        success: false,
+        message,
         code: "REWRITE_ERROR",
       });
     }
   });
 
-  // ── Analysis History ──────────────────────────────────────────────────────
-  app.get("/api/history", async (_req, res) => {
-    try {
-      const analyses = await storage.getAnalyses();
-      res.json({ analyses });
-    } catch (error: any) {
-      res.status(500).json({
-        error: "Failed to fetch history.",
-        code: "HISTORY_ERROR",
-      });
-    }
+  // ── Analysis History (client-side localStorage only) ─────────────────────
+  // NOTE: History is stored in the browser's localStorage, not on the server.
+  // These endpoints are kept for API completeness but always return empty.
+  app.get("/api/history", (_req, res) => {
+    res.json({ analyses: [] });
   });
 
-  app.delete("/api/history", async (_req, res) => {
-    try {
-      await storage.clearAnalyses();
-      res.json({ message: "History cleared successfully." });
-    } catch (error: any) {
-      res.status(500).json({
-        error: "Failed to clear history.",
-        code: "HISTORY_ERROR",
-      });
-    }
+  app.delete("/api/history", (_req, res) => {
+    res.json({ success: true, message: "History cleared." });
   });
 
+  console.log("[Routes] Routes registered successfully.");
   return httpServer;
 }

@@ -7,18 +7,18 @@ import { registerRoutes } from "../server/routes.js";
 const app = express();
 const httpServer = createServer(app);
 
-// Initialization state
+// Initialization state — cached across warm Vercel invocations
 let isSetup = false;
-let setupError: any = null;
+let setupError: { message: string; name: string } | null = null;
 let setupPromise: Promise<void> | null = null;
 
-async function performSetup() {
+async function performSetup(): Promise<void> {
   if (isSetup) return;
   if (setupPromise) return setupPromise;
 
   setupPromise = (async () => {
     try {
-      console.log("[Setup] Starting server initialization...");
+      console.log("[Setup] Initializing serverless handler...");
 
       app.set("trust proxy", 1);
       app.use(express.json({ limit: "10mb" }));
@@ -32,51 +32,71 @@ async function performSetup() {
         })
       );
 
-      // Rate limiting
-      const limiter = rateLimit({
+      // General rate limit — 60 req/min (infrastructure protection)
+      const generalLimiter = rateLimit({
         windowMs: 60 * 1000,
         max: 60,
-        message: { error: "Too many requests, please try again in a minute." },
+        message: {
+          success: false,
+          message: "Too many requests, please try again in a minute.",
+          code: "RATE_LIMITED",
+        },
         standardHeaders: true,
         legacyHeaders: false,
       });
-      app.use("/api", limiter);
+      app.use("/api", generalLimiter);
 
-      console.log("[Setup] Registering routes...");
+      // AI endpoint rate limit — 10 req/min (cost protection, not a user limit)
+      const aiLimiter = rateLimit({
+        windowMs: 60 * 1000,
+        max: 10,
+        message: {
+          success: false,
+          message: "Too many AI requests. Please wait a moment before trying again.",
+          code: "RATE_LIMITED",
+        },
+        standardHeaders: true,
+        legacyHeaders: false,
+      });
+      app.use("/api/analyze", aiLimiter);
+      app.use("/api/rewrite", aiLimiter);
+
       await registerRoutes(httpServer, app);
 
-      // Final global error handler for the app
-      app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-        console.error("[App Error]", err);
-        const status = err.status || err.statusCode || 500;
+      // Global error handler — always returns JSON
+      app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+        const errObj = err as { status?: number; statusCode?: number; message?: string };
+        const status = errObj.status || errObj.statusCode || 500;
+        const message = errObj.message || "Internal Server Error";
+
+        console.error("[App Error]", message);
+
         if (!res.headersSent) {
           res.status(status).json({
-            error: err.message || "Internal Server Error",
+            success: false,
+            message,
             code: "SERVER_ERROR",
-            details: process.env.NODE_ENV === "development" ? err.stack : undefined
           });
         }
       });
 
       isSetup = true;
-      console.log("[Setup] Server initialization successful.");
-    } catch (err: any) {
-      console.error("[Setup] CRITICAL: Server initialization failed:", err);
-      setupError = {
-        message: err.message,
-        stack: err.stack,
-        name: err.name
-      };
+      console.log("[Setup] Serverless handler ready.");
+    } catch (err: unknown) {
+      const errObj = err instanceof Error ? err : new Error(String(err));
+      console.error("[Setup] CRITICAL: Initialization failed:", errObj.message);
+      setupError = { message: errObj.message, name: errObj.name };
       isSetup = false;
       setupPromise = null; // Allow retry on next request
-      throw err;
+      throw errObj;
     }
   })();
 
   return setupPromise;
 }
 
-// Vercel Serverless Function Config
+// Vercel Serverless Function config — disable built-in body parser
+// so multer can handle multipart/form-data correctly
 export const config = {
   api: {
     bodyParser: false,
@@ -84,50 +104,59 @@ export const config = {
 };
 
 // Vercel Serverless Function Handler
-export default async function handler(req: any, res: any) {
+export default async function handler(req: Request, res: Response) {
   const startTime = Date.now();
-  console.log(`[Handler] ${req.method} ${req.url} - API KEY EXISTS: ${!!process.env.GROQ_API_KEY}`);
+  console.log(
+    `[Handler] ${req.method} ${req.url} — GROQ_KEY: ${!!process.env.GROQ_API_KEY}`
+  );
 
   try {
-    // Ensure setup is complete
     await performSetup();
 
-    // Check if initialization failed
     if (setupError) {
-      console.error("[Handler] Setup error cached:", setupError.message);
+      console.error("[Handler] Cached setup error:", setupError.message);
       return res.status(500).json({
-        error: "Server failed to initialize.",
-        details: setupError.message,
-        code: "SETUP_FAILED"
+        success: false,
+        message: "Server failed to initialize. Please try again.",
+        code: "SETUP_FAILED",
       });
     }
 
-    // Hand off to the express app
-    // We return a Promise that resolves when the response is finished
-    return new Promise((resolve) => {
+    return new Promise<void>((resolve) => {
       const cleanup = () => {
-        const duration = Date.now() - startTime;
-        console.log(`[Handler] Request finished in ${duration}ms`);
-        resolve(undefined);
+        console.log(`[Handler] Request finished in ${Date.now() - startTime}ms`);
+        resolve();
       };
-
-      res.on('finish', cleanup);
-      res.on('close', cleanup);
-      res.on('error', (err: any) => {
-        console.error("[Handler] Response error:", err);
+      res.on("finish", cleanup);
+      res.on("close", cleanup);
+      res.on("error", (err: Error) => {
+        console.error("[Handler] Response error:", err.message);
         cleanup();
       });
 
-      // Pass the request to the Express app
-      app(req, res);
+      app(req, res, (err?: unknown) => {
+        if (err) {
+          console.error("[Handler] Express error:", err);
+          if (!res.headersSent) {
+            res.status(500).json({
+              success: false,
+              message: "An internal server error occurred.",
+              code: "HANDLER_ERROR",
+            });
+          }
+        }
+        cleanup();
+      });
     });
-  } catch (error: any) {
-    console.error("[Handler] Fatal Crash:", error);
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "A critical server error occurred.";
+    console.error("[Handler] Fatal crash:", message);
     if (!res.headersSent) {
       res.status(500).json({
-        error: "A critical server error occurred.",
-        details: error.message,
-        code: "HANDLER_ERROR"
+        success: false,
+        message,
+        code: "HANDLER_ERROR",
       });
     }
   }

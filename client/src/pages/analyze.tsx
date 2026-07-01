@@ -171,7 +171,7 @@ export default function Analyze() {
         try {
             const formData = new FormData();
             if (selectedFile) {
-                formData.append("file", selectedFile);
+                formData.append("resume", selectedFile);
             } else {
                 formData.append("resumeText", resumeText);
             }

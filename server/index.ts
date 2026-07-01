@@ -10,63 +10,40 @@ const httpServer = createServer(app);
 
 export { app, httpServer };
 
-declare module "http" {
-  interface IncomingMessage {
-    rawBody: unknown;
-  }
-}
-
 // Security headers
 app.use(
   helmet({
-    contentSecurityPolicy: false, // disabled to allow Vite HMR in dev
+    contentSecurityPolicy: false,
     crossOriginEmbedderPolicy: false,
   })
 );
 
-// Rate limiting - 60 requests per minute per IP
-const limiter = rateLimit({
+// General API rate limit — 60 requests per minute per IP
+const generalLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 60,
   message: { error: "Too many requests, please try again in a minute." },
   standardHeaders: true,
   legacyHeaders: false,
 });
-app.use("/api", limiter);
+app.use("/api", generalLimiter);
 
-// Stricter limit for AI analysis endpoint
-const analysisLimiter = rateLimit({
+// AI endpoint rate limit — 10 AI calls per minute per IP
+const aiLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 10,
-  message: { error: "Analysis rate limit reached. Please wait before analyzing again." },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use("/api/analyze", analysisLimiter);
-app.use("/api/rewrite", analysisLimiter);
-
-// Daily limit for resume uploads - 3 per 24 hours per IP
-const dailyUploadLimiter = rateLimit({
-  windowMs: 24 * 60 * 60 * 1000,
-  max: 3,
   message: {
-    error: "Daily upload limit reached (3 resumes per day). Please try again in 24 hours.",
-    code: "DAILY_LIMIT_REACHED"
+    success: false,
+    message: "Too many AI requests. Please wait a moment before trying again.",
+    code: "RATE_LIMITED",
   },
   standardHeaders: true,
   legacyHeaders: false,
 });
-app.use("/api/analyze", dailyUploadLimiter);
+app.use("/api/analyze", aiLimiter);
+app.use("/api/rewrite", aiLimiter);
 
-app.use(
-  express.json({
-    limit: "10mb",
-    verify: (req, _res, buf) => {
-      req.rawBody = buf;
-    },
-  })
-);
-
+app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: false, limit: "10mb" }));
 
 export function log(message: string, source = "express") {
@@ -76,18 +53,18 @@ export function log(message: string, source = "express") {
     second: "2-digit",
     hour12: true,
   });
-
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
+// Request logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+  let capturedJsonResponse: Record<string, unknown> | undefined;
 
   const originalResJson = res.json;
   res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
+    capturedJsonResponse = bodyJson as Record<string, unknown>;
     return originalResJson.apply(res, [bodyJson, ...args]);
   };
 
@@ -109,19 +86,7 @@ app.use((req, res, next) => {
 (async () => {
   await registerRoutes(httpServer, app);
 
-  app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    console.error("Internal Server Error:", err);
-
-    if (res.headersSent) {
-      return next(err);
-    }
-
-    return res.status(status).json({ error: message, code: "INTERNAL_ERROR" });
-  });
-
+  // Vite dev server or production static files — AFTER routes
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
@@ -129,16 +94,47 @@ app.use((req, res, next) => {
     await setupVite(httpServer, app);
   }
 
+  // Global error handler — MUST be AFTER all routes and middleware
+  app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+    const errObj = err as { status?: number; statusCode?: number; message?: string };
+    const status = errObj.status || errObj.statusCode || 500;
+    const message = errObj.message || "Internal Server Error";
+
+    console.error("[Server] Unhandled error:", err);
+
+    if (res.headersSent) return;
+
+    res.status(status).json({
+      success: false,
+      message,
+      code: "INTERNAL_ERROR",
+    });
+  });
+
+  // Only start a listening server when NOT running on Vercel
   if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
     const port = parseInt(process.env.PORT || "5003", 10);
-    httpServer.listen(
-      {
-        port,
-        host: "0.0.0.0",
-      },
-      () => {
-        log(`serving on port ${port}`);
-      }
-    );
+    httpServer.listen({ port, host: "0.0.0.0" }, () => {
+      log(`serving on port ${port}`);
+    });
   }
-})();
+})().catch((err) => {
+  console.error("[Server] Fatal startup error:", err);
+  process.exit(1);
+});
+
+// Graceful shutdown
+function shutdown(signal: string) {
+  log(`Received ${signal}. Shutting down gracefully...`);
+  httpServer.close(() => {
+    log("Server closed.");
+    process.exit(0);
+  });
+  setTimeout(() => {
+    console.error("Forced shutdown after timeout.");
+    process.exit(1);
+  }, 5000);
+}
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));

@@ -1,191 +1,321 @@
 import Groq from "groq-sdk";
 
 const MODEL = "llama-3.3-70b-versatile";
+const MAX_RESUME_LENGTH = 15_000;
+const REQUEST_TIMEOUT_MS = 55_000; // Just under Vercel's 60s function timeout
+
+// ─── Type Definitions ─────────────────────────────────────────────────────────
+
+export interface ResumeAnalysis {
+  score: number;
+  atsCompatibility: {
+    status: string;
+    issues: string[];
+    passed: string[];
+  };
+  keywords: {
+    found: string[];
+    missing: string[];
+  };
+  skills: {
+    technical: number;
+    soft: number;
+    leadership: number;
+  };
+  formatting: {
+    score: number;
+    feedback: string;
+  };
+  actionPlan: string[];
+  strengths: string[];
+  summary: string;
+}
+
+export interface MatchAnalysis {
+  matchScore: number;
+  keywordGap: Array<{ skill: string; importance: string; found: boolean }>;
+  pros: string[];
+  cons: string[];
+  summarySuggestion: string;
+  interviewQuestions: string[];
+}
+
+export interface RewriteResult {
+  rewrittenSection: string;
+  changes: string[];
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
  * Returns a fresh Groq client, validating the API key at call time.
- * This lazy approach avoids module-load failures on Vercel cold starts
- * where env vars may not be available during import.
+ * Lazy initialization avoids module-load failures on Vercel cold starts.
  */
 function getGroqClient(): Groq {
-    console.log("API KEY EXISTS:", !!process.env.GROQ_API_KEY);
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey || apiKey === "your_api_key_here" || apiKey === "your_real_groq_api_key_here") {
-        throw new Error(
-            "Groq API key is not configured or is invalid. Please set GROQ_API_KEY in your environment variables."
-        );
-    }
-    return new Groq({ apiKey });
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey || apiKey === "your_api_key_here" || apiKey.trim().length < 10) {
+    throw new Error(
+      "GROQ_API_KEY is not configured. Please add it to your Vercel environment variables."
+    );
+  }
+  return new Groq({ apiKey });
 }
 
-export async function analyzeResume(resumeText: string) {
-    console.log(`[Groq] Using model: ${MODEL} for analyzeResume`);
-    const groq = getGroqClient();
+/**
+ * Sanitize resume text: trim, normalize whitespace, cap length.
+ */
+function sanitizeText(text: string): string {
+  return text
+    .trim()
+    .replace(/\r\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .slice(0, MAX_RESUME_LENGTH);
+}
 
-    const prompt = `
-You are an expert AI Career Coach and ATS optimizer.
-Please analyze the following resume text and provide a comprehensive report in structured JSON format. 
+/**
+ * Safely parse JSON from a Groq response. Throws a descriptive error if malformed.
+ */
+function parseGroqJson<T>(content: string | null | undefined, context: string): T {
+  if (!content) {
+    throw new Error(`No content returned from AI for ${context}.`);
+  }
+  try {
+    return JSON.parse(content) as T;
+  } catch {
+    console.error(`[Groq] Malformed JSON for ${context}:`, content.slice(0, 200));
+    throw new Error(`AI returned malformed response for ${context}. Please try again.`);
+  }
+}
+
+/**
+ * Translate Groq/network errors into user-friendly messages.
+ */
+function handleGroqError(error: unknown, context: string): never {
+  if (error instanceof Error) {
+    const msg = error.message.toLowerCase();
+
+    // Never expose the API key
+    if (msg.includes("api_key") || msg.includes("apikey")) {
+      throw new Error("AI service authentication failed. Please contact support.");
+    }
+    if (msg.includes("rate_limit") || msg.includes("rate limit") || msg.includes("429")) {
+      throw new Error("AI service is busy. Please wait a moment and try again.");
+    }
+    if (msg.includes("timeout") || msg.includes("aborted") || msg.includes("etimedout")) {
+      throw new Error(
+        "The AI analysis took too long to respond. Your resume may be very long — try trimming it."
+      );
+    }
+    if (msg.includes("503") || msg.includes("service unavailable")) {
+      throw new Error("AI service is temporarily unavailable. Please try again in a few seconds.");
+    }
+
+    console.error(`[Groq] Error in ${context}:`, error.message);
+    throw new Error(`Unable to complete ${context}. Please try again.`);
+  }
+  throw new Error(`An unexpected error occurred in ${context}.`);
+}
+
+// ─── Exported Functions ───────────────────────────────────────────────────────
+
+export async function analyzeResume(resumeText: string): Promise<ResumeAnalysis> {
+  console.log(`[Groq] analyzeResume — model: ${MODEL}`);
+  const groq = getGroqClient();
+  const safeText = sanitizeText(resumeText);
+
+  const prompt = `You are an expert AI Career Coach and ATS optimizer.
+Analyze the following resume text and provide a comprehensive report in structured JSON format.
 The JSON must strictly match this schema:
 
 {
-  "score": number, // Overall resume score out of 100
+  "score": number,
   "atsCompatibility": {
-    "status": string, // "Excellent", "Good", "Needs Improvement", or "Poor"
-    "issues": string[], // List of ATS parsing issues found (2-4 items)
-    "passed": string[] // List of good ATS practices found (2-4 items)
+    "status": string,
+    "issues": string[],
+    "passed": string[]
   },
   "keywords": {
-    "found": string[], // Relevant professional keywords found (5-10 items)
-    "missing": string[] // Suggested keywords that are missing (4-6 items)
+    "found": string[],
+    "missing": string[]
   },
   "skills": {
-    "technical": number, // Score out of 100
-    "soft": number, // Score out of 100
-    "leadership": number // Score out of 100
+    "technical": number,
+    "soft": number,
+    "leadership": number
   },
   "formatting": {
-    "score": number, // Formatting score out of 100
-    "feedback": string // 2-3 sentence feedback on formatting quality
+    "score": number,
+    "feedback": string
   },
-  "actionPlan": string[], // 4 specific, actionable steps to improve the resume
-  "strengths": string[], // 3 key strengths of the resume
-  "summary": string // A 2-sentence professional summary of the candidate's profile
+  "actionPlan": string[],
+  "strengths": string[],
+  "summary": string
 }
+
+Rules:
+- score: Overall resume quality out of 100
+- atsCompatibility.status: "Excellent", "Good", "Needs Improvement", or "Poor"
+- atsCompatibility.issues: 2-4 ATS parsing issues found
+- atsCompatibility.passed: 2-4 good ATS practices
+- keywords.found: 5-10 relevant professional keywords found
+- keywords.missing: 4-6 suggested missing keywords
+- skills.*: scores out of 100
+- formatting.feedback: 2-3 sentence feedback
+- actionPlan: 4 specific, actionable improvement steps
+- strengths: 3 key strengths
+- summary: 2-sentence professional summary
 
 Resume Text:
-${resumeText}
-`;
+${safeText}`;
 
-    const chatCompletion = await groq.chat.completions.create({
-        messages: [
-            {
-                role: "user",
-                content: prompt,
-            },
-        ],
+  try {
+    const completion = await groq.chat.completions.create(
+      {
+        messages: [{ role: "user", content: prompt }],
         model: MODEL,
         response_format: { type: "json_object" },
-    });
+        temperature: 0.3,
+      },
+      { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }
+    );
 
-    const content = chatCompletion.choices[0]?.message?.content;
-    if (!content) {
-        throw new Error("Failed to generate analysis from Groq.");
+    const content = completion.choices[0]?.message?.content;
+    return parseGroqJson<ResumeAnalysis>(content, "resume analysis");
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Resume analysis timed out. Please try again with a shorter resume.");
     }
-
-    return JSON.parse(content);
+    handleGroqError(error, "resume analysis");
+  }
 }
 
-export async function matchJobDescription(resumeText: string, jobDescription: string) {
-    console.log(`[Groq] Using model: ${MODEL} for matchJobDescription`);
-    const groq = getGroqClient();
+export async function matchJobDescription(
+  resumeText: string,
+  jobDescription: string
+): Promise<MatchAnalysis> {
+  console.log(`[Groq] matchJobDescription — model: ${MODEL}`);
+  const groq = getGroqClient();
+  const safeResume = sanitizeText(resumeText);
+  const safeJD = jobDescription.trim().slice(0, 8_000);
 
-    const prompt = `
-You are an expert technical recruiter and AI matching system.
-Please compare the following resume against the provided job description and return a detailed match report in structured JSON format.
+  const prompt = `You are an expert technical recruiter and AI matching system.
+Compare the resume against the job description and return a detailed match report in structured JSON format.
 The JSON must strictly match this schema:
 
 {
-  "matchScore": number, // Job match score out of 100
+  "matchScore": number,
   "keywordGap": [
-    { 
-      "skill": string, 
-      "importance": string, // "High", "Medium", or "Low"
-      "found": boolean 
-    }
-  ], // Analyze 8-12 skills
-  "pros": string[], // 3-4 strings detailing why they are a good fit
-  "cons": string[], // 2-3 strings detailing missing requirements or experience
-  "summarySuggestion": string, // A tailored professional summary paragraph they can use
-  "interviewQuestions": string[] // 4 likely interview questions based on the role and gaps
+    { "skill": string, "importance": string, "found": boolean }
+  ],
+  "pros": string[],
+  "cons": string[],
+  "summarySuggestion": string,
+  "interviewQuestions": string[]
 }
+
+Rules:
+- matchScore: 0-100 job match percentage
+- keywordGap: Analyze 8-12 skills; importance is "High", "Medium", or "Low"
+- pros: 3-4 reasons they are a good fit
+- cons: 2-3 missing requirements or experience gaps
+- summarySuggestion: A tailored professional summary paragraph
+- interviewQuestions: 4 likely interview questions based on role and gaps
 
 Job Description:
-${jobDescription}
+${safeJD}
 
 Resume Text:
-${resumeText}
-`;
+${safeResume}`;
 
-    const chatCompletion = await groq.chat.completions.create({
-        messages: [
-            {
-                role: "user",
-                content: prompt,
-            },
-        ],
+  try {
+    const completion = await groq.chat.completions.create(
+      {
+        messages: [{ role: "user", content: prompt }],
         model: MODEL,
         response_format: { type: "json_object" },
-    });
+        temperature: 0.3,
+      },
+      { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }
+    );
 
-    const content = chatCompletion.choices[0]?.message?.content;
-    if (!content) {
-        throw new Error("Failed to generate match report from Groq.");
+    const content = completion.choices[0]?.message?.content;
+    return parseGroqJson<MatchAnalysis>(content, "job match analysis");
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Job match analysis timed out. Please try again.");
     }
-
-    return JSON.parse(content);
+    handleGroqError(error, "job match analysis");
+  }
 }
 
-export async function rewriteResumeSection(resumeText: string, instruction: string) {
-    console.log(`[Groq] Using model: ${MODEL} for rewriteResumeSection`);
-    const groq = getGroqClient();
+export async function rewriteResumeSection(
+  resumeText: string,
+  instruction: string
+): Promise<RewriteResult> {
+  console.log(`[Groq] rewriteResumeSection — model: ${MODEL}`);
+  const groq = getGroqClient();
+  const safeText = sanitizeText(resumeText);
+  const safeInstruction = instruction.trim().slice(0, 500);
 
-    const prompt = `
-You are an expert career coach and professional resume writer.
-I will provide you with the full text of a resume below.
-Please analyze this text and break it down into logical sections (e.g., Summary, Experience, Skills, Education).
-Improve and rewrite EACH section based on this instruction: "${instruction}"
+  const prompt = `You are an expert career coach and professional resume writer.
+Analyze the resume text and break it down into logical sections.
+Improve and rewrite EACH section based on this instruction: "${safeInstruction}"
 
-CRITICAL RULES for rewriting:
+CRITICAL RULES:
 1. DO NOT invent or assume any facts, dates, companies, or roles not present in the original text.
 2. Maintain all technical keywords and specific technologies mentioned.
-3. Focus on making bullet points "achievement-oriented" using the STAR method (Situation, Task, Action, Result) where possible.
+3. Focus on achievement-oriented bullet points using the STAR method where possible.
 4. Use strong action verbs (e.g., "Spearheaded", "Optimized", "Architected").
-5. Improve the grammar and professional tone to be executive-level.
+5. Improve grammar and professional tone to be executive-level.
 6. Ensure the result is highly ATS-optimized.
 
-Return the result as a STRICT JSON object with this schema:
+Return a STRICT JSON object with this schema:
 {
   "sections": [
     {
-      "name": string, // Section name (e.g., "Summary", "Professional Experience")
-      "originalText": string, // The original text for this section
-      "rewrittenText": string, // The improved version
-      "improvements": string[] // 2-3 bullet points on what was improved
+      "name": string,
+      "originalText": string,
+      "rewrittenText": string,
+      "improvements": string[]
     }
   ]
 }
 
-RESUME CONTENT TO REWRITE:
-${resumeText}
-`;
+RESUME CONTENT:
+${safeText}`;
 
-    const chatCompletion = await groq.chat.completions.create({
-        messages: [
-            {
-                role: "user",
-                content: prompt,
-            },
-        ],
+  try {
+    const completion = await groq.chat.completions.create(
+      {
+        messages: [{ role: "user", content: prompt }],
         model: MODEL,
         response_format: { type: "json_object" },
-    });
+        temperature: 0.4,
+      },
+      { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }
+    );
 
-    const content = chatCompletion.choices[0]?.message?.content;
-    if (!content) {
-        throw new Error("Failed to generate rewrite from Groq.");
-    }
+    const content = completion.choices[0]?.message?.content;
+    const parsed = parseGroqJson<{
+      sections: Array<{
+        name?: string;
+        rewrittenText?: string;
+        improvements?: string[];
+      }>;
+    }>(content, "resume rewrite");
 
-    const parsed = JSON.parse(content);
-
-    // Transform the section-wise output into the single block format the frontend expects
-    const rewrittenSection = parsed.sections
-        ?.map((s: any) => `${s.name ? `### ${s.name}\n` : ""}${s.rewrittenText}`)
+    const rewrittenSection =
+      parsed.sections
+        ?.map((s) => `${s.name ? `### ${s.name}\n` : ""}${s.rewrittenText ?? ""}`)
         .join("\n\n") || "No content generated.";
 
-    const changes = parsed.sections?.flatMap((s: any) => s.improvements || []) || [];
+    const changes = parsed.sections?.flatMap((s) => s.improvements ?? []) ?? [];
 
-    return {
-        rewrittenSection,
-        changes
-    };
+    return { rewrittenSection, changes };
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Resume rewrite timed out. Please try again.");
+    }
+    handleGroqError(error, "resume rewrite");
+  }
 }

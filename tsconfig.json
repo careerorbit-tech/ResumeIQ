@@ -30,8 +30,7 @@
     "baseUrl": ".",
     "types": [
       "node",
-      "vite/client",
-      "pdf-parse"
+      "vite/client"
     ],
     "paths": {
       "@/*": [

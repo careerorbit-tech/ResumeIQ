@@ -1,0 +1,11 @@
+node_modules
+.git
+.env
+.env.local
+.env.*.local
+dist
+.local
+.replit
+*.md
+CONTRIBUTING.md
+LICENSE

@@ -1,7 +1,17 @@
-import { type User, type InsertUser } from "../shared/schema.js";
-import { randomUUID } from "node:crypto";
-
 // ─── Types ────────────────────────────────────────────────────────────────────
+// Plain TypeScript types — no database dependency required.
+// This project does NOT persist any data.
+
+export interface User {
+  id: string;
+  username: string;
+  password: string;
+}
+
+export interface InsertUser {
+  username: string;
+  password: string;
+}
 
 export interface AnalysisRecord {
   id: string;
@@ -9,54 +19,31 @@ export interface AnalysisRecord {
   fileName: string | null;
   score: number;
   matchScore: number | null;
-  resumeReport: any;
-  matchReport: any;
+  resumeReport: unknown;
+  matchReport: unknown;
 }
 
 export interface IStorage {
-  // Users
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
-
-  // Analysis History
+  // Analysis History (in-memory only)
   saveAnalysis(record: AnalysisRecord): Promise<void>;
   getAnalyses(): Promise<AnalysisRecord[]>;
   clearAnalyses(): Promise<void>;
 }
 
 // ─── In-Memory Implementation ─────────────────────────────────────────────────
+// Everything is in-memory and discarded when the serverless function completes.
+// No database, no persistence, no user accounts.
 
 export class MemStorage implements IStorage {
-  private users: Map<string, User>;
   private analyses: AnalysisRecord[];
   private readonly MAX_HISTORY = 50;
 
   constructor() {
-    this.users = new Map();
     this.analyses = [];
-  }
-
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
   }
 
   async saveAnalysis(record: AnalysisRecord): Promise<void> {
     this.analyses.unshift(record);
-    // Keep only the last MAX_HISTORY records
     if (this.analyses.length > this.MAX_HISTORY) {
       this.analyses = this.analyses.slice(0, this.MAX_HISTORY);
     }
