@@ -56,7 +56,7 @@ async function buildAll() {
       "process.env.NODE_ENV": '"production"',
     },
     minify: true,
-    external: [...externals, "./lib/parser.js"],
+    external: externals,
     logLevel: "info",
   });
 }
