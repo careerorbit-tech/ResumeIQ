@@ -1,3 +1,6 @@
 User-agent: *
 Allow: /
-Sitemap: /sitemap.xml
+Disallow: /api/
+Disallow: /*.json$
+
+Sitemap: https://resumeiq.ai/sitemap.xml

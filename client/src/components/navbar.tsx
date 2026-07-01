@@ -42,7 +42,7 @@ export function Navbar() {
                     </Link>
 
                     {/* Desktop Nav */}
-                    <nav className="hidden md:flex items-center gap-1">
+                    <nav role="navigation" aria-label="Main navigation" className="hidden md:flex items-center gap-1">
                         {navLinks.map((link) => (
                             <Link key={link.href} href={link.href}>
                                 <Button
@@ -89,7 +89,7 @@ export function Navbar() {
 
                 {/* Mobile Nav */}
                 {mobileOpen && (
-                    <div className="md:hidden pb-4 space-y-1 border-t mt-0 pt-2">
+                    <nav role="navigation" aria-label="Mobile navigation" className="md:hidden pb-4 space-y-1 border-t mt-0 pt-2">
                         {navLinks.map((link) => (
                             <Link key={link.href} href={link.href}>
                                 <Button
@@ -107,7 +107,7 @@ export function Navbar() {
                                 Analyze Resume
                             </Button>
                         </Link>
-                    </div>
+                    </nav>
                 )}
             </div>
         </header>

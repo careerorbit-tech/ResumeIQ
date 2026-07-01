@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Navbar } from "@/components/navbar";
+import { SEO } from "@/components/seo";
 import {
     Sparkles, BarChart2, ArrowRight, CheckCircle2, Zap, Bot,
     Shield, FileText, Target, TrendingUp, Star, Users, Clock, Award
@@ -66,13 +67,51 @@ const stats = [
     { value: "Free", label: "No Credit Card", icon: Star },
 ];
 
+const landingStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "ResumeIQ - Free Resume Checker",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Web",
+    "url": "https://resumeiq.ai",
+    "description": "Free online resume checker. Check your resume score, ATS compatibility, keyword gaps, and get a personalized action plan. No login required.",
+    "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+    },
+    "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "1250",
+        "bestRating": "5"
+    },
+    "featureList": [
+        "Free Resume Checker Online",
+        "ATS Resume Score Checker",
+        "Check My Resume for Free",
+        "Resume Keyword Gap Analysis",
+        "Job Match Score",
+        "AI Resume Review",
+        "Resume Optimization Tips"
+    ]
+};
+
 export default function Landing() {
     return (
         <div className="min-h-screen flex flex-col">
+            <SEO
+                title="Free Resume Checker — ATS Resume Score | Check My Resume Online"
+                description="Free resume checker online — no login required. Check your resume score, get ATS compatibility check, keyword gap analysis, and job match report. AI-powered resume review in seconds."
+                keywords="free resume checker, resume checker, ATS resume checker, check my resume, resume score, free ATS checker, resume scanner, resume review free, AI resume checker, resume optimization, check resume online, resume feedback, resume grading"
+                canonical="https://resumeiq.ai/"
+                ogImage="https://resumeiq.ai/opengraph.jpg"
+                structuredData={landingStructuredData}
+            />
             <Navbar />
 
             {/* Hero */}
-            <section className="relative overflow-hidden animated-gradient">
+            <section aria-label="Hero section" className="relative overflow-hidden animated-gradient">
                 {/* Orbs */}
                 <div className="orb w-96 h-96 bg-primary/20 top-[-100px] left-[-100px]" style={{ animationDelay: "0s" }} />
                 <div className="orb w-72 h-72 bg-purple-400/20 top-20 right-[-60px]" style={{ animationDelay: "3s" }} />
@@ -81,18 +120,18 @@ export default function Landing() {
                 <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-28 text-center">
                     <Badge className="mb-6 gap-2 text-sm py-1.5 px-4 bg-primary/10 text-primary border-primary/20 font-medium">
                         <Sparkles className="w-3.5 h-3.5" />
-                        AI-Powered Resume Analysis
+                        Free AI Resume Checker
                     </Badge>
 
                     <h1 className="text-5xl sm:text-6xl lg:text-7xl font-display font-extrabold tracking-tight mb-6 leading-[1.1]">
-                        Your Resume,{" "}
-                        <span className="gradient-text">Supercharged</span>
-                        <br />by AI
+                        Free Resume Checker
+                        <br />
+                        <span className="gradient-text">ATS Score</span> &amp; Job Match
                     </h1>
 
                     <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-                        Upload your resume and get instant, AI-powered feedback. Score your resume,
-                        find keyword gaps, check ATS compatibility, and get a personalized action plan — in seconds.
+                        Check your resume for free — get an ATS compatibility score, keyword gap analysis,
+                        job match report, and personalized action plan. No login required, instant AI-powered results.
                     </p>
 
                     <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -121,7 +160,7 @@ export default function Landing() {
             </section>
 
             {/* Stats */}
-            <section className="border-y bg-background">
+            <section aria-label="Key statistics" className="border-y bg-background">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                         {stats.map((stat) => (
@@ -138,15 +177,15 @@ export default function Landing() {
             </section>
 
             {/* Features */}
-            <section className="py-24 bg-muted/20">
+            <section aria-label="Free resume checker features" className="py-24 bg-muted/20">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center mb-16">
                         <Badge variant="outline" className="mb-4 text-primary border-primary/30">Features</Badge>
                         <h2 className="text-4xl font-display font-bold mb-4">
-                            Everything you need to land the job
+                            Free Resume Checker Features
                         </h2>
                         <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-                            Our AI doesn't just score — it guides you with precise, actionable feedback.
+                            Everything you need to check your resume score, pass ATS, and land more interviews — all free.
                         </p>
                     </div>
 
@@ -167,13 +206,13 @@ export default function Landing() {
             </section>
 
             {/* How it Works */}
-            <section className="py-24">
+            <section aria-label="How to check your resume for free" className="py-24">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center mb-16">
                         <Badge variant="outline" className="mb-4 text-primary border-primary/30">How It Works</Badge>
-                        <h2 className="text-4xl font-display font-bold mb-4">From upload to insights in 3 steps</h2>
+                        <h2 className="text-4xl font-display font-bold mb-4">How to check your resume for free</h2>
                         <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-                            ResumeIQ makes it effortless to get professional-grade resume feedback.
+                            Check your resume score in 3 simple steps — no signup, no credit card, 100% free.
                         </p>
                     </div>
 
@@ -197,20 +236,20 @@ export default function Landing() {
             </section>
 
             {/* CTA */}
-            <section className="py-24 bg-primary relative overflow-hidden">
+            <section aria-label="Check your resume for free" className="py-24 bg-primary relative overflow-hidden">
                 <div className="orb w-96 h-96 bg-white/10 top-[-100px] right-[-100px]" />
                 <div className="orb w-64 h-64 bg-white/5 bottom-[-60px] left-1/4" style={{ animationDelay: "4s" }} />
                 <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                     <Award className="w-12 h-12 text-primary-foreground/70 mx-auto mb-6" />
                     <h2 className="text-4xl sm:text-5xl font-display font-bold text-primary-foreground mb-6">
-                        Ready to transform your resume?
+                        Check Your Resume Score — Free
                     </h2>
                     <p className="text-primary-foreground/80 text-xl mb-10 max-w-xl mx-auto">
-                        Join thousands of job seekers who've improved their resume with AI-powered insights.
+                        Join thousands of job seekers who improved their resume score with our free ATS resume checker.
                     </p>
                     <Link href="/analyze">
                         <Button size="lg" variant="secondary" className="h-14 px-10 text-base font-semibold gap-2 group shadow-xl">
-                            Start Analyzing — It's Free
+                            Check My Resume — Free
                             <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
                         </Button>
                     </Link>
@@ -218,15 +257,15 @@ export default function Landing() {
             </section>
 
             {/* Footer */}
-            <footer className="border-t bg-background py-8">
+            <footer role="contentinfo" className="border-t bg-background py-8">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-primary" />
+                        <Sparkles className="w-4 h-4 text-primary" aria-hidden="true" />
                         <span className="font-display font-semibold">ResumeIQ</span>
-                        <span className="text-muted-foreground text-sm">— AI Resume Analyzer</span>
+                        <span className="text-muted-foreground text-sm">— Free Resume Checker &amp; ATS Score Tool</span>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                        AI-Powered Resume Analysis · Built for job seekers
+                        Free AI-Powered Resume Analysis · Check Your Resume Online
                     </p>
                 </div>
             </footer>

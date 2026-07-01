@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Navbar } from "@/components/navbar";
+import { SEO } from "@/components/seo";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -781,6 +782,12 @@ export default function Analyze() {
     if (isMobile) {
         return (
             <div className="flex flex-col h-screen">
+                <SEO
+                    title="Check Resume Score Free — ATS Checker & Job Match | ResumeIQ"
+                    description="Check your resume score for free. Upload your resume for ATS compatibility check, keyword gap analysis, job match score, and AI-powered improvement tips."
+                    keywords="check resume score, free ATS checker, resume score checker, check my resume, ATS resume checker free, resume test online, resume feedback free"
+                    canonical="https://resumeiq.ai/analyze"
+                />
                 <Navbar />
                 {hasReport && (
                     <div className="flex border-b bg-background">
@@ -804,8 +811,14 @@ export default function Analyze() {
 
     return (
         <div className="flex flex-col h-screen">
+            <SEO
+                title="Check Resume Score Free — ATS Checker & Job Match | ResumeIQ"
+                description="Check your resume score for free. Upload your resume for ATS compatibility check, keyword gap analysis, job match score, and AI-powered improvement tips."
+                keywords="check resume score, free ATS checker, resume score checker, check my resume, ATS resume checker free, resume test online, resume feedback free"
+                canonical="https://resumeiq.ai/analyze"
+            />
             <Navbar />
-            <main className="flex-1 overflow-hidden">
+            <main role="main" className="flex-1 overflow-hidden">
                 <ResizablePanelGroup direction="horizontal" className="h-full">
                     <ResizablePanel defaultSize={38} minSize={28} maxSize={50} className="bg-background">
                         {InputPanel}

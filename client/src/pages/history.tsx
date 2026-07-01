@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { Navbar } from "@/components/navbar";
+import { SEO } from "@/components/seo";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -63,9 +64,15 @@ export default function HistoryPage() {
 
     return (
         <div className="min-h-screen flex flex-col">
+            <SEO
+                title="Resume Analysis History — Track Your Resume Score Over Time | ResumeIQ"
+                description="View your past resume analyses and track your resume score improvement over time. Review ATS compatibility, job match results, and resume feedback history."
+                keywords="resume analysis history, resume score tracker, past resume reviews, resume improvement tracker, job application history, resume feedback history"
+                canonical="https://resumeiq.ai/history"
+            />
             <Navbar />
 
-            <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12">
+            <main role="main" className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12">
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10">
                     <div>
