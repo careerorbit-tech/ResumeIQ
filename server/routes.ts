@@ -50,7 +50,7 @@ export async function registerRoutes(
   });
 
   // ── Analyze Resume ──────────────────────────────────────────────────────────
-  app.post("/api/analyze", upload.single("resume"), async (req, res) => {
+  app.post("/api/analyze", upload.fields([{ name: "resume", maxCount: 1 }]), async (req, res) => {
     try {
       // Validate GROQ_API_KEY early — return clean JSON, never crash
       if (!process.env.GROQ_API_KEY) {
@@ -62,8 +62,8 @@ export async function registerRoutes(
         });
       }
 
-      const file = (req as Express.Request & { file?: Express.Multer.File })
-        .file;
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+      const file = files?.resume?.[0];
       let resumeText = (req.body.resumeText as string) || "";
 
       // Extract text from uploaded file

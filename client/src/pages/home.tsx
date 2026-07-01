@@ -85,7 +85,7 @@ export default function Home() {
         let errorMessage = "Analysis failed";
         if (contentType && contentType.includes("application/json")) {
           const errorData = await res.json();
-          errorMessage = errorData.error || errorMessage;
+          errorMessage = errorData.message || errorData.error || errorMessage;
         } else {
           // It's likely an HTML error page (like a 404 or 500 from the provider)
           const text = await res.text();
@@ -154,7 +154,7 @@ export default function Home() {
         let errorMessage = "Rewrite failed";
         if (contentType && contentType.includes("application/json")) {
           const errorData = await res.json();
-          errorMessage = errorData.error || errorMessage;
+          errorMessage = errorData.message || errorData.error || errorMessage;
         } else {
           const text = await res.text();
           if (text.includes("<!DOCTYPE html>") || text.includes("<html")) {

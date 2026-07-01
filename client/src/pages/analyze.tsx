@@ -185,7 +185,7 @@ export default function Analyze() {
                 const contentType = res.headers.get("content-type");
                 if (contentType && contentType.includes("application/json")) {
                     const err = await res.json();
-                    throw new Error(err.error || "Analysis failed");
+                    throw new Error(err.message || err.error || "Analysis failed");
                 } else {
                     const text = await res.text();
                     console.error("Non-JSON error response:", text);
