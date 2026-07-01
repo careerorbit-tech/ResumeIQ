@@ -639,6 +639,7 @@ export default function Analyze() {
                             <Card className="shadow-sm border-none">
                                 <CardHeader>
                                     <CardTitle className="text-base">Skills Breakdown</CardTitle>
+                                    <CardDescription>Keyword presence and skill category scores</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-5">
                                     {[
@@ -664,6 +665,7 @@ export default function Analyze() {
                                     </div>
                                     <div className="pt-3 border-t">
                                         <h4 className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wider">Missing Keywords</h4>
+                                        <p className="text-[10px] text-muted-foreground mb-2">Industry/role-specific skills not found in your resume</p>
                                         <div className="flex flex-wrap gap-1.5">
                                             {resumeReport.keywords.missing.map((kw, i) => (
                                                 <Badge key={i} variant="outline" className="text-xs text-rose-600 border-rose-200 bg-rose-50 dark:bg-rose-950/20">{kw}</Badge>
@@ -704,11 +706,12 @@ export default function Analyze() {
                         </div>
 
                         {/* ATS Full Detail */}
-                        <Card className="shadow-sm border-none">
+                            <Card className="shadow-sm border-none">
                             <CardHeader>
                                 <CardTitle className="text-base flex items-center gap-2">
                                     <Shield className="w-4 h-4 text-primary" /> ATS Compatibility Details
                                 </CardTitle>
+                                <CardDescription>Structural issues that affect how ATS software reads your resume</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <div className="grid sm:grid-cols-2 gap-6">

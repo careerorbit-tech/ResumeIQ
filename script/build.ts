@@ -1,6 +1,6 @@
 import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
-import { rm, readFile } from "fs/promises";
+import { rm, readFile, mkdir, writeFile } from "fs/promises";
 
 // server deps to bundle to reduce openat(2) syscalls
 // which helps cold start times
@@ -46,6 +46,19 @@ async function buildAll() {
   ];
   const externals = allDeps.filter((dep) => !allowlist.includes(dep));
 
+  // Build parser separately as CJS with its own package.json to override "type":"module"
+  await mkdir("dist/lib", { recursive: true });
+  await writeFile("dist/lib/package.json", '{"type":"commonjs"}');
+  await esbuild({
+    entryPoints: ["server/lib/parser.ts"],
+    platform: "node",
+    bundle: true,
+    format: "cjs",
+    outfile: "dist/lib/parser.js",
+    logLevel: "info",
+  });
+
+  // Build main server bundle with parser as external
   await esbuild({
     entryPoints: ["server/index.ts"],
     platform: "node",
@@ -56,7 +69,7 @@ async function buildAll() {
       "process.env.NODE_ENV": '"production"',
     },
     minify: true,
-    external: externals,
+    external: [...externals, "./lib/parser.js"],
     logLevel: "info",
   });
 }

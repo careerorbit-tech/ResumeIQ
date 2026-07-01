@@ -152,15 +152,25 @@ The JSON must strictly match this schema:
   "summary": string
 }
 
-Rules:
+CRITICAL DISTINCTION — These two fields are DIFFERENT:
+
+1. atsCompatibility.issues = STRUCTURAL / FORMATTING problems that prevent ATS software from parsing the resume correctly.
+   Examples: "No clear section headers", "Using tables or columns that ATS cannot read", "Missing contact information", "Special characters or graphics in headers", "Inconsistent date formatting", "No measurable results in bullet points"
+   These are about HOW the resume is structured, NOT about content.
+
+2. keywords.missing = INDUSTRY / ROLE-SPECIFIC professional keywords and skills that are NOT present in the resume but are commonly required for this type of role.
+   Examples: "Python", "AWS", "Agile methodology", " stakeholder management", "CI/CD"
+   These are about WHAT skills/terms are absent from the content.
+
+RULES:
 - score: Overall resume quality out of 100
 - atsCompatibility.status: "Excellent", "Good", "Needs Improvement", or "Poor"
-- atsCompatibility.issues: 2-4 ATS parsing issues found
-- atsCompatibility.passed: 2-4 good ATS practices
-- keywords.found: 5-10 relevant professional keywords found
-- keywords.missing: 4-6 suggested missing keywords
+- atsCompatibility.issues: 2-4 STRUCTURAL/FORMATTING problems (NOT keyword gaps)
+- atsCompatibility.passed: 2-4 good ATS structural practices
+- keywords.found: 5-10 relevant professional keywords found in the resume
+- keywords.missing: 4-6 missing industry/role-specific keywords (NOT structural issues)
 - skills.*: scores out of 100
-- formatting.feedback: 2-3 sentence feedback
+- formatting.feedback: 2-3 sentence feedback on visual formatting quality
 - actionPlan: 4 specific, actionable improvement steps
 - strengths: 3 key strengths
 - summary: 2-sentence professional summary

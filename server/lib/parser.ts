@@ -11,7 +11,8 @@
 // Importing from /lib/pdf-parse.js bypasses index.js entirely and directly
 // accesses the pure parsing library — no test file references, no side effects.
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+import { createRequire } from "node:module";
+const require = createRequire(typeof __dirname !== "undefined" ? __dirname : import.meta.url);
 const pdfParse: (
   dataBuffer: Buffer,
   options?: Record<string, unknown>
