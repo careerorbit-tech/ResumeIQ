@@ -73,7 +73,7 @@ const landingStructuredData = {
     "name": "ResumeIQ - Free Resume Checker",
     "applicationCategory": "BusinessApplication",
     "operatingSystem": "Web",
-    "url": "https://resumeiq.ai",
+    "url": "https://resume-iq.in",
     "description": "Free online resume checker. Check your resume score, ATS compatibility, keyword gaps, and get a personalized action plan. No login required.",
     "offers": {
         "@type": "Offer",
@@ -104,8 +104,8 @@ export default function Landing() {
                 title="Free Resume Checker — ATS Resume Score | Check My Resume Online"
                 description="Free resume checker online — no login required. Check your resume score, get ATS compatibility check, keyword gap analysis, and job match report. AI-powered resume review in seconds."
                 keywords="free resume checker, resume checker, ATS resume checker, check my resume, resume score, free ATS checker, resume scanner, resume review free, AI resume checker, resume optimization, check resume online, resume feedback, resume grading"
-                canonical="https://resumeiq.ai/"
-                ogImage="https://resumeiq.ai/opengraph.jpg"
+                canonical="https://resume-iq.in/"
+                ogImage="https://resume-iq.in/opengraph.jpg"
                 structuredData={landingStructuredData}
             />
             <Navbar />

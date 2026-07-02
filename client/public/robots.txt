@@ -3,4 +3,4 @@ Allow: /
 Disallow: /api/
 Disallow: /*.json$
 
-Sitemap: https://resumeiq.ai/sitemap.xml
+Sitemap: https://resume-iq.in/sitemap.xml

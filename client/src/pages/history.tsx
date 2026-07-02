@@ -68,7 +68,7 @@ export default function HistoryPage() {
                 title="Resume Analysis History — Track Your Resume Score Over Time | ResumeIQ"
                 description="View your past resume analyses and track your resume score improvement over time. Review ATS compatibility, job match results, and resume feedback history."
                 keywords="resume analysis history, resume score tracker, past resume reviews, resume improvement tracker, job application history, resume feedback history"
-                canonical="https://resumeiq.ai/history"
+                canonical="https://resume-iq.in/history"
             />
             <Navbar />
 

@@ -786,7 +786,7 @@ export default function Analyze() {
                     title="Check Resume Score Free — ATS Checker & Job Match | ResumeIQ"
                     description="Check your resume score for free. Upload your resume for ATS compatibility check, keyword gap analysis, job match score, and AI-powered improvement tips."
                     keywords="check resume score, free ATS checker, resume score checker, check my resume, ATS resume checker free, resume test online, resume feedback free"
-                    canonical="https://resumeiq.ai/analyze"
+                    canonical="https://resume-iq.in/analyze"
                 />
                 <Navbar />
                 {hasReport && (
@@ -815,7 +815,7 @@ export default function Analyze() {
                 title="Check Resume Score Free — ATS Checker & Job Match | ResumeIQ"
                 description="Check your resume score for free. Upload your resume for ATS compatibility check, keyword gap analysis, job match score, and AI-powered improvement tips."
                 keywords="check resume score, free ATS checker, resume score checker, check my resume, ATS resume checker free, resume test online, resume feedback free"
-                canonical="https://resumeiq.ai/analyze"
+                canonical="https://resume-iq.in/analyze"
             />
             <Navbar />
             <main role="main" className="flex-1 overflow-hidden">

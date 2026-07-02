@@ -15,7 +15,7 @@ export function SEO({
   description,
   keywords,
   canonical,
-  ogImage = "https://resumeiq.ai/opengraph.jpg",
+  ogImage = "https://resume-iq.in/opengraph.jpg",
   ogType = "website",
   structuredData,
 }: SEOProps) {
