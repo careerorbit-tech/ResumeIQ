@@ -46,6 +46,7 @@
   <link rel="icon" type="image/svg+xml"
     href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%236933ff'/><text y='22' x='5' font-size='18' fill='white'>✦</text></svg>" />
   <link rel="apple-touch-icon" href="https://resume-iq.in/favicon.png" />
+  <link rel="manifest" href="/manifest.json" />
 
   <!-- Preconnect -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -53,6 +54,43 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"
     rel="stylesheet" />
+
+  <!-- JSON-LD: Organization -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "ResumeIQ",
+    "url": "https://resume-iq.in",
+    "logo": "https://resume-iq.in/opengraph.jpg",
+    "description": "AI-powered resume checker and ATS optimization tool. Free resume analysis with job match scoring and actionable improvement tips.",
+    "sameAs": [],
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "contactType": "customer service",
+      "availableLanguage": "English"
+    }
+  }
+  </script>
+
+  <!-- JSON-LD: WebSite -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "ResumeIQ",
+    "url": "https://resume-iq.in",
+    "description": "Free AI-powered resume checker with ATS compatibility scoring, job match analysis, and actionable improvement tips.",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": "https://resume-iq.in/analyze"
+      },
+      "query-input": "required name=query"
+    }
+  }
+  </script>
 
   <!-- JSON-LD: WebApplication -->
   <script type="application/ld+json">
@@ -163,6 +201,12 @@
         "position": 2,
         "name": "Check Resume",
         "item": "https://resume-iq.in/analyze"
+      },
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": "History",
+        "item": "https://resume-iq.in/history"
       }
     ]
   }

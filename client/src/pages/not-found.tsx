@@ -7,7 +7,7 @@ export default function NotFound() {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main role="main" aria-label="Page not found" className="flex-1 flex items-center justify-center animated-gradient p-4">
+      <main id="main-content" role="main" aria-label="Page not found" className="flex-1 flex items-center justify-center animated-gradient p-4">
         <div className="text-center max-w-md mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {/* Big 404 */}
           <div className="relative">

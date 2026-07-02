@@ -97,6 +97,15 @@ const landingStructuredData = {
     ]
 };
 
+const organizationStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "ResumeIQ",
+    "url": "https://resume-iq.in",
+    "logo": "https://resume-iq.in/opengraph.jpg",
+    "description": "AI-powered resume checker and ATS optimization tool."
+};
+
 export default function Landing() {
     return (
         <div className="min-h-screen flex flex-col">
@@ -106,9 +115,11 @@ export default function Landing() {
                 keywords="free resume checker, resume checker, ATS resume checker, check my resume, resume score, free ATS checker, resume scanner, resume review free, AI resume checker, resume optimization, check resume online, resume feedback, resume grading"
                 canonical="https://resume-iq.in/"
                 ogImage="https://resume-iq.in/opengraph.jpg"
-                structuredData={landingStructuredData}
+                structuredData={[landingStructuredData, organizationStructuredData]}
             />
             <Navbar />
+
+            <main id="main-content">
 
             {/* Hero */}
             <section aria-label="Hero section" className="relative overflow-hidden animated-gradient">
@@ -256,17 +267,58 @@ export default function Landing() {
                 </div>
             </section>
 
+            </main>
+
             {/* Footer */}
-            <footer role="contentinfo" className="border-t bg-background py-8">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-primary" aria-hidden="true" />
-                        <span className="font-display font-semibold">ResumeIQ</span>
-                        <span className="text-muted-foreground text-sm">— Free Resume Checker &amp; ATS Score Tool</span>
+            <footer role="contentinfo" className="border-t bg-background py-12">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+                        {/* Brand */}
+                        <div className="md:col-span-2">
+                            <div className="flex items-center gap-2.5 mb-4">
+                                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                    <Sparkles className="w-5 h-5" aria-hidden="true" />
+                                </div>
+                                <span className="font-display font-bold text-xl tracking-tight">
+                                    Resume<span className="text-primary">IQ</span>
+                                </span>
+                            </div>
+                            <p className="text-muted-foreground text-sm leading-relaxed max-w-sm">
+                                Free AI-powered resume checker with ATS compatibility scoring, job match analysis,
+                                and actionable improvement tips. No login required.
+                            </p>
+                        </div>
+
+                        {/* Quick Links */}
+                        <div>
+                            <h3 className="font-display font-semibold text-sm mb-4">Quick Links</h3>
+                            <ul className="space-y-2">
+                                <li><Link href="/" className="text-sm text-muted-foreground hover:text-primary transition-colors">Home</Link></li>
+                                <li><Link href="/analyze" className="text-sm text-muted-foreground hover:text-primary transition-colors">Analyze Resume</Link></li>
+                                <li><Link href="/history" className="text-sm text-muted-foreground hover:text-primary transition-colors">History</Link></li>
+                            </ul>
+                        </div>
+
+                        {/* Features */}
+                        <div>
+                            <h3 className="font-display font-semibold text-sm mb-4">Features</h3>
+                            <ul className="space-y-2">
+                                <li><span className="text-sm text-muted-foreground">ATS Score Checker</span></li>
+                                <li><span className="text-sm text-muted-foreground">Job Match Analysis</span></li>
+                                <li><span className="text-sm text-muted-foreground">AI Resume Rewrite</span></li>
+                                <li><span className="text-sm text-muted-foreground">Keyword Gap Analysis</span></li>
+                            </ul>
+                        </div>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                        Free AI-Powered Resume Analysis · Check Your Resume Online
-                    </p>
+
+                    <div className="border-t pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <p className="text-sm text-muted-foreground">
+                            &copy; {new Date().getFullYear()} ResumeIQ. Free AI-Powered Resume Analysis.
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                            Built with AI to help job seekers land more interviews.
+                        </p>
+                    </div>
                 </div>
             </footer>
         </div>

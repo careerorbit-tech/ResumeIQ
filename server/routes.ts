@@ -12,24 +12,37 @@ const ALLOWED_MIME_TYPES = [
   "application/pdf",
   "text/plain",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/msword",
 ];
 
+const ALLOWED_EXTENSIONS = [".pdf", ".docx", ".doc", ".txt"];
+
 // Vercel's request body limit is 4.5MB; keep headroom for multipart overhead
-const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4 MB
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_FILE_SIZE },
   fileFilter: (_req, file, cb) => {
-    if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(
-        new Error(
-          `Unsupported file type: ${file.mimetype}. Only PDF, DOCX, and TXT files are allowed.`
-        )
-      );
+    // Validate MIME type
+    if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+      // Also check by extension as fallback (some servers send wrong MIME)
+      const ext = file.originalname.toLowerCase().slice(file.originalname.lastIndexOf("."));
+      if (!ALLOWED_EXTENSIONS.includes(ext)) {
+        cb(
+          new Error(
+            `Unsupported file type: ${file.mimetype}. Only PDF, DOCX, DOC, and TXT files are allowed.`
+          )
+        );
+        return;
+      }
     }
+    // Validate filename (no path traversal)
+    if (file.originalname.includes("..") || file.originalname.includes("/") || file.originalname.includes("\\")) {
+      cb(new Error("Invalid filename."));
+      return;
+    }
+    cb(null, true);
   },
 });
 
@@ -85,7 +98,9 @@ export async function registerRoutes(
           }
           console.timeEnd("[Routes] pdf-parse");
         } else {
-          // DOCX / TXT — read as UTF-8
+          // DOCX / DOC / TXT — read as UTF-8
+          // Note: DOC files are binary and may not parse well as UTF-8.
+          // For best results, users should convert DOC to DOCX or PDF before uploading.
           resumeText = file.buffer.toString("utf-8");
         }
       }

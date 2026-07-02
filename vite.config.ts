@@ -26,6 +26,17 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    target: "es2020",
+    minify: "esbuild",
+    cssMinify: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ["react", "react-dom"],
+          ui: ["@radix-ui/react-tabs", "@radix-ui/react-dialog", "@radix-ui/react-accordion"],
+        },
+      },
+    },
   },
   server: {
     host: "0.0.0.0",

@@ -10,11 +10,31 @@ const httpServer = createServer(app);
 
 export { app, httpServer };
 
-// Security headers
+// Remove X-Powered-By header
+app.disable("x-powered-by");
+
+// Security headers — strict but functional
 app.use(
   helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        imgSrc: ["'self'", "data:", "https:"],
+        connectSrc: ["'self'"],
+        frameSrc: ["'none'"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+      },
+    },
     crossOriginEmbedderPolicy: false,
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+    hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+    noSniff: true,
+    xssFilter: true,
   })
 );
 
@@ -104,9 +124,14 @@ app.use((req, res, next) => {
 
     if (res.headersSent) return;
 
+    // Hide error details in production
+    const safeMessage = process.env.NODE_ENV === "production"
+      ? "An unexpected error occurred. Please try again."
+      : message;
+
     res.status(status).json({
       success: false,
-      message,
+      message: safeMessage,
       code: "INTERNAL_ERROR",
     });
   });

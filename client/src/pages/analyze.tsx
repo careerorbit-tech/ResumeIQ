@@ -15,7 +15,7 @@ import {
     FileText, Upload, Sparkles, CheckCircle2, XCircle, AlertTriangle,
     BookOpen, Briefcase, Zap, Bot, Star, ListChecks, Check, Lightbulb,
     Loader2, Download, Copy, RefreshCw, Trash2, ArrowLeft, TrendingUp,
-    Shield, KeyRound, ClipboardList
+    Shield, KeyRound, ClipboardList, Users
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -28,6 +28,9 @@ interface ResumeReport {
     formatting: { score: number; feedback: string };
     actionPlan: string[];
     strengths?: string[];
+    weaknesses?: string[];
+    grammarSuggestions?: string[];
+    recruiterSuggestions?: string[];
     summary?: string;
 }
 
@@ -38,6 +41,11 @@ interface MatchReport {
     cons: string[];
     summarySuggestion: string;
     interviewQuestions: string[];
+}
+
+interface RewriteResult {
+    rewrittenSection: string;
+    changes: string[];
 }
 
 // ─── Score Gauge ─────────────────────────────────────────────────────────────
@@ -120,7 +128,7 @@ export default function Analyze() {
     const [isRewriting, setIsRewriting] = useState(false);
     const [resumeReport, setResumeReport] = useState<ResumeReport | null>(null);
     const [matchReport, setMatchReport] = useState<MatchReport | null>(null);
-    const [rewriteResult, setRewriteResult] = useState<any>(null);
+    const [rewriteResult, setRewriteResult] = useState<RewriteResult | null>(null);
     const [activeMobileTab, setActiveMobileTab] = useState<"input" | "report">("input");
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -215,8 +223,9 @@ export default function Analyze() {
             toast.success("Analysis complete!", {
                 description: `Your resume scored ${data.resumeReport.score}/100.`
             });
-        } catch (error: any) {
-            toast.error("Analysis failed", { description: error.message });
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : "Analysis failed. Please try again.";
+            toast.error("Analysis failed", { description: message });
         } finally {
             setIsAnalyzing(false);
         }
@@ -305,7 +314,7 @@ export default function Analyze() {
                         onDragLeave={handleDragLeave}
                         onClick={() => fileInputRef.current?.click()}
                     >
-                        <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.txt,.docx" onChange={handleFileInput} />
+                        <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.txt,.docx,.doc" onChange={handleFileInput} />
                         <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-3">
                             <Upload className="w-5 h-5" />
                         </div>
@@ -317,7 +326,7 @@ export default function Analyze() {
                         ) : (
                             <>
                                 <p className="font-medium text-sm">Drop your resume here</p>
-                                <p className="text-xs text-muted-foreground mt-1">PDF, DOCX, TXT · Max 5MB</p>
+                                <p className="text-xs text-muted-foreground mt-1">PDF, DOCX, DOC, TXT · Max 5MB</p>
                             </>
                         )}
                     </div>
@@ -515,6 +524,69 @@ export default function Analyze() {
                                     </div>
                                 </CardContent>
                             </Card>
+                        )}
+
+                        {/* Weaknesses */}
+                        {resumeReport.weaknesses && resumeReport.weaknesses.length > 0 && (
+                            <Card className="border-none shadow-sm bg-amber-50/50 dark:bg-amber-950/10">
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-sm font-medium flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                                        <AlertTriangle className="w-4 h-4" /> Areas for Improvement
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="grid sm:grid-cols-2 gap-3">
+                                        {resumeReport.weaknesses.map((w, i) => (
+                                            <div key={i} className="flex items-start gap-2 text-sm">
+                                                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                                                <span className="text-muted-foreground">{w}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {/* Grammar & Recruiter Suggestions */}
+                        {(resumeReport.grammarSuggestions && resumeReport.grammarSuggestions.length > 0 || resumeReport.recruiterSuggestions && resumeReport.recruiterSuggestions.length > 0) && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {resumeReport.grammarSuggestions && resumeReport.grammarSuggestions.length > 0 && (
+                                    <Card className="shadow-sm border-none">
+                                        <CardHeader className="pb-2">
+                                            <CardTitle className="text-sm font-medium flex items-center gap-2">
+                                                <BookOpen className="w-4 h-4 text-blue-500" /> Grammar & Writing
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <ul className="space-y-2">
+                                                {resumeReport.grammarSuggestions.map((g, i) => (
+                                                    <li key={i} className="text-xs text-muted-foreground flex gap-2">
+                                                        <span className="text-blue-500 mt-0.5 shrink-0">•</span>{g}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </CardContent>
+                                    </Card>
+                                )}
+                                {resumeReport.recruiterSuggestions && resumeReport.recruiterSuggestions.length > 0 && (
+                                    <Card className="shadow-sm border-none">
+                                        <CardHeader className="pb-2">
+                                            <CardTitle className="text-sm font-medium flex items-center gap-2">
+                                                <Users className="w-4 h-4 text-purple-500" /> Recruiter Tips
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <ul className="space-y-2">
+                                                {resumeReport.recruiterSuggestions.map((r, i) => (
+                                                    <li key={i} className="text-xs text-muted-foreground flex gap-2">
+                                                        <span className="text-purple-500 mt-0.5 shrink-0">•</span>{r}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </CardContent>
+                                    </Card>
+                                )}
+                            </div>
                         )}
 
                         {/* Job Match */}
@@ -818,7 +890,7 @@ export default function Analyze() {
                 canonical="https://resume-iq.in/analyze"
             />
             <Navbar />
-            <main role="main" className="flex-1 overflow-hidden">
+            <main id="main-content" role="main" className="flex-1 overflow-hidden">
                 <ResizablePanelGroup direction="horizontal" className="h-full">
                     <ResizablePanel defaultSize={38} minSize={28} maxSize={50} className="bg-background">
                         {InputPanel}

@@ -72,7 +72,7 @@ export default function HistoryPage() {
             />
             <Navbar />
 
-            <main role="main" className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12">
+            <main id="main-content" role="main" className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12">
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10">
                     <div>
@@ -101,9 +101,9 @@ export default function HistoryPage() {
 
                 {/* Empty State */}
                 {history.length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-24 text-center">
+                    <div className="flex flex-col items-center justify-center py-24 text-center" role="status">
                         <div className="w-20 h-20 rounded-2xl bg-muted/50 flex items-center justify-center mb-6">
-                            <BarChart2 className="w-10 h-10 text-muted-foreground/40" />
+                            <BarChart2 className="w-10 h-10 text-muted-foreground/40" aria-hidden="true" />
                         </div>
                         <h2 className="text-xl font-display font-semibold mb-2">No analyses yet</h2>
                         <p className="text-muted-foreground mb-6 max-w-sm">

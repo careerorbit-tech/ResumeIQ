@@ -28,6 +28,9 @@ export interface ResumeAnalysis {
   };
   actionPlan: string[];
   strengths: string[];
+  weaknesses: string[];
+  grammarSuggestions: string[];
+  recruiterSuggestions: string[];
   summary: string;
 }
 
@@ -149,6 +152,9 @@ The JSON must strictly match this schema:
   },
   "actionPlan": string[],
   "strengths": string[],
+  "weaknesses": string[],
+  "grammarSuggestions": string[],
+  "recruiterSuggestions": string[],
   "summary": string
 }
 
@@ -173,6 +179,9 @@ RULES:
 - formatting.feedback: 2-3 sentence feedback on visual formatting quality
 - actionPlan: 4 specific, actionable improvement steps
 - strengths: 3 key strengths
+- weaknesses: 2-3 areas that need improvement
+- grammarSuggestions: 2-3 specific grammar or writing style improvements
+- recruiterSuggestions: 2-3 tips a recruiter would give to improve this resume
 - summary: 2-sentence professional summary
 
 Resume Text:

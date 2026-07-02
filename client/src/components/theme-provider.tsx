@@ -32,15 +32,41 @@ export function ThemeProvider({
         const root = window.document.documentElement;
         root.classList.remove("light", "dark");
 
+        let resolvedTheme: "light" | "dark";
+
         if (theme === "system") {
-            const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
+            resolvedTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
                 ? "dark"
                 : "light";
-            root.classList.add(systemTheme);
-            return;
+        } else {
+            resolvedTheme = theme;
         }
 
-        root.classList.add(theme);
+        root.classList.add(resolvedTheme);
+
+        // Update meta theme-color for mobile browsers
+        const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+        if (metaThemeColor) {
+            metaThemeColor.setAttribute(
+                "content",
+                resolvedTheme === "dark" ? "#0f1428" : "#6933ff"
+            );
+        }
+    }, [theme]);
+
+    // Listen for system theme changes
+    useEffect(() => {
+        if (theme !== "system") return;
+
+        const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+        const handleChange = () => {
+            const root = window.document.documentElement;
+            root.classList.remove("light", "dark");
+            root.classList.add(mediaQuery.matches ? "dark" : "light");
+        };
+
+        mediaQuery.addEventListener("change", handleChange);
+        return () => mediaQuery.removeEventListener("change", handleChange);
     }, [theme]);
 
     const value = {
